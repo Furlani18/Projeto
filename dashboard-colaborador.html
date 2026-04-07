@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel Administrativo - GESISTEC</title>
+    <link rel="stylesheet" href="style-admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h3>GESISTEC Admin</h3>
+                <p id="nomeAdmin">Carregando...</p>
+            </div>
+            <hr>
+            <ul>
+                <li class="active">Dashboard</li>
+                <li>Atendimento de Tickets</li>
+                <li>Cadastro de Usuários</li> <li>Relatórios</li>
+            </ul>
+            <button onclick="logout()" class="btn-logout">Sair</button>
+        </nav>
+
+        <main class="content">
+            <header class="content-header">
+                <h2>Visão Geral do Sistema</h2>
+                <p id="dataAtual"></p>
+            </header>
+
+            <section class="stats-grid">
+                <div class="card stat-card blue">
+                    <h4>Tickets Abertos</h4>
+                    <h2 id="totalAbertos">0</h2>
+                </div>
+                <div class="card stat-card yellow">
+                    <h4>Pendente/Aguardando</h4>
+                    <h2 id="totalPendentes">0</h2>
+                </div>
+                <div class="card stat-card green">
+                    <h4>Finalizados</h4>
+                    <h2 id="totalFinalizados">0</h2>
+                </div>
+            </section>
+            
+            <section class="chart-section">
+                <div class="card">
+                    <h3>Tickets por Cliente</h3>
+                    <div id="graficoPlaceholder" class="grafico-container">
+                        <div class="bar-chart" id="listaGrafico">
+                            <p style="color: #666;">Nenhum dado para exibir no momento.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app-admin.js"></script>
+</body>
+</html>
