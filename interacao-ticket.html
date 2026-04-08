@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Interação de Ticket - GESISTEC</title>
+    <link rel="stylesheet" href="style-interacao.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="ticket-detail-wrapper">
+        <header class="ticket-header">
+            <div class="breadcrumb">Tickets / #<span id="ticketIdLabel">0000</span></div>
+            <div class="header-main">
+                <h2 id="tipoRequisicao">Requisição de Melhoria</h2> <div class="action-bar">
+                    <button class="btn-tool"><i class="fas fa-share-alt"></i> Compartilhar</button>
+                    <button class="btn-tool"><i class="fas fa-edit"></i> Editar</button>
+                    <button class="btn-tool-close" onclick="voltar()">Fechar</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="ticket-container">
+            <main class="ticket-main">
+                <nav class="ticket-tabs">
+                    <button class="tab-link active">Detalhes</button>
+                    <button class="tab-link">Anexos</button>
+                    <button class="tab-link">Conversas</button>
+                </nav>
+
+                <section class="ticket-content">
+                    <div class="description-box">
+                        <p id="descricaoTicket">Carregando detalhes da solicitação...</p>
+                    </div>
+
+                    <div class="attachments-section">
+                        <h4>Anexos <span class="count-badge" id="anexoCount">0</span></h4>
+                        <table class="maint-table">
+                            <thead>
+                                <tr>
+                                    <th>Anexo</th>
+                                    <th>Tamanho</th>
+                                    <th>Anexado em</th>
+                                    <th>Anexado por</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaAnexos">
+                                </tbody>
+                        </table>
+                        <div class="upload-area">
+                            <input type="file" id="inputArquivo" onchange="uploadDireto(this)">
+                            <label for="inputArquivo" class="btn-upload"><i class="fas fa-paperclip"></i> Anexar documento diretamente</label>
+                        </div>
+                    </div>
+
+                    <div class="conversation-section">
+                        <h4>Conversas</h4>
+                        <div id="historicoConversa" class="chat-box"></div>
+                        <div class="reply-area">
+                            <textarea id="textoResposta" placeholder="Escreva uma resposta..."></textarea>
+                            <button class="btn-primary" onclick="enviarResposta()">Enviar Resposta</button>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <aside class="ticket-sidebar">
+                <div class="prop-group">
+                    <label>Status</label>
+                    <div class="status-indicator" id="statusLabel">Pendente</div> </div>
+                <div class="prop-group">
+                    <label>Prioridade</label>
+                    <select id="selectPrioridade" onchange="atualizarPrioridade()">
+                        <option value="Baixa">Baixa</option>
+                        <option value="Média">Média</option>
+                        <option value="Alta">Alta</option>
+                    </select>
+                </div>
+                <div class="prop-group">
+                    <label>Solicitante</label>
+                    <p id="nomeSolicitante">---</p>
+                </div>
+            </aside>
+        </div>
+    </div>
+    <script src="app-interacao.js"></script>
+</body>
+</html>
