@@ -15,9 +15,9 @@
                 <span>Gestão Tecnológica</span>
             </div>
             <nav class="side-nav">
-                <a href="#" class="active"><i class="fas fa-ticket-alt"></i> Meus Chamados</a>
-                <a href="#"><i class="fas fa-plus-circle"></i> Novo Ticket</a>
-                <a href="#"><i class="fas fa-history"></i> Histórico</a>
+                <a href="#" class="active" onclick="carregarTickets()"><i class="fas fa-ticket-alt"></i> Meus Chamados</a>
+                <a href="#" onclick="abrirModal()"><i class="fas fa-plus-circle"></i> Novo Ticket</a> 
+                <a href="#" onclick="verHistorico()"><i class="fas fa-history"></i> Histórico</a>
             </nav>
             <div class="sidebar-footer">
                 <button onclick="logout()" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Sair</button>
@@ -73,38 +73,54 @@
 
     <div id="modalTicket" class="modal">
         <div class="modal-content">
-    <div class="modal-header">
-        <h3><i class="fas fa-edit"></i> Abrir Novo Chamado</h3>
-        <button onclick="fecharModal()" class="close-btn">&times;</button>
+            <div class="modal-header">
+                <h3>Abrir Novo Chamado</h3>
+                <button onclick="fecharModal()" class="close-btn">&times;</button>
+            </div>
+            <form id="formTicket">
+                <div class="form-group">
+                    <label for="assunto">Assunto</label>
+                    <input type="text" id="assunto" required placeholder="Ex: Ajuste em orçamentos">
+                </div>
+                <div class="form-group">
+                    <label for="prioridade">Prioridade</label>
+                    <select id="prioridade">
+                        <option value="Baixa">Baixa</option>
+                        <option value="Média" selected>Média</option>
+                        <option value="Alta">Alta</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" onclick="fecharModal()" class="btn-cancelar">Cancelar</button>
+                    <button type="submit" class="btn-primary">Criar Ticket</button>
+                </div>
+            </form>
+        </div>
     </div>
-    
-    <form id="formTicket"> 
-        <div class="form-group">
-            <label for="assunto">Assunto</label>
-            <input type="text" id="assunto" required placeholder="Ex: Erro no cálculo de custo agrícola">
-        </div>
-        
-        <div class="form-group">
-            <label for="prioridade">Prioridade</label>
-            <select id="prioridade">
-                <option value="Baixa">Baixa</option>
-                <option value="Média" selected>Média</option>
-                <option value="Alta">Alta</option>
-            </select>
-        </div>
 
-        <div class="form-group">
-            <label for="descricao">Relato do Problema</label>
-            <textarea id="descricao" rows="5" required placeholder="Descreva os detalhes da sua solicitação para a equipe técnica..."></textarea>
+    <div id="modalEdicao" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h3 id="editTicketTitle">Detalhes do Ticket</h3>
+                <button onclick="fecharModalEdicao()" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Relato / Interação</label> 
+                    <textarea id="editRelato" rows="4" placeholder="Escreva aqui o relato ou atualização técnica..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Anexar Documento (Direto no Site)</label> 
+                    <input type="file" id="arquivoAnexo" class="file-input">
+                </div>
+                <div id="listaAnexos" class="attachments-list"></div> 
+            </div>
+            <div class="form-actions">
+                <button type="button" onclick="fecharModalEdicao()" class="btn-cancelar">Fechar</button>
+                <button type="button" class="btn-primary" onclick="salvarEdicao()">Atualizar Ticket</button>
+            </div>
         </div>
-
-        <div class="form-actions">
-            <button type="button" onclick="fecharModal()" class="btn-cancelar">Cancelar</button>
-            <button type="submit" class="btn-primary">Enviar Chamado</button>
-        </div>
-    </form>
-</div>
-        </div>
+    </div>
 
     <script src="app-tickets.js"></script>
 </body>
