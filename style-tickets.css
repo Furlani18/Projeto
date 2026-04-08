@@ -210,3 +210,41 @@ form { padding: 2rem; }
 .form-actions {
     display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;
 }
+
+
+/* Modal de Edição mais largo para os detalhes */
+.modal-content.large {
+    max-width: 700px;
+}
+
+.file-input {
+    border: 2px dashed #e2e8f0;
+    padding: 20px;
+    width: 100%;
+    cursor: pointer;
+    background: #f8fafc;
+}
+
+.attachments-list {
+    margin-top: 15px;
+    padding: 10px;
+    background: #f1f5f9;
+    border-radius: 8px;
+}
+
+.attachment-item {
+    font-size: 0.85rem;
+    color: #475569;
+    margin-top: 5px;
+}
+
+/* Botão de edição na tabela */
+.btn-edit {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 5px;
+}
