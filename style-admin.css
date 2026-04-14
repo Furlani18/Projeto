@@ -1,8 +1,21 @@
-/* Reset e Base */
+/* 1. Variáveis e Reset */
+:root {
+    --primary-green: #1a5c37;
+    --active-bg: #f0fdf4;
+    --active-text: #166534;
+    --sidebar-white: #ffffff;
+    --body-bg: #f1f5f9;
+    --border-color: #e2e8f0;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --blue-royal: #2563eb;
+}
+
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
     margin: 0;
-    background-color: #f0f2f5;
+    background-color: var(--body-bg);
+    color: var(--text-main);
 }
 
 .admin-container {
@@ -10,108 +23,149 @@ body {
     min-height: 100vh;
 }
 
-/* Sidebar */
+/* 2. Sidebar Fixa (Layout SaaS) */
 .sidebar {
     width: 260px;
-    background-color: #003366; /* Azul escuro corporativo */
-    color: white;
-    padding: 25px;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    background: var(--sidebar-white);
+    border-right: 1px solid var(--border-color);
+    z-index: 1000;
+    padding: 24px;
     display: flex;
     flex-direction: column;
+    box-sizing: border-box;
 }
 
-.sidebar-header h3 {
-    margin: 0;
-    font-size: 1.4rem;
-    color: #4da3ff;
-}
+.sidebar-header h3 { color: var(--primary-green); margin: 0; font-size: 1.4rem; font-weight: 800; }
+.sidebar-header p { color: var(--text-muted); font-size: 0.85rem; margin: 5px 0 20px 0; }
 
-.sidebar ul {
-    list-style: none;
-    padding: 0;
-    margin: 30px 0;
-    flex-grow: 1;
-}
+.sidebar-menu { flex-grow: 1; }
+.menu-title { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px; font-weight: 700; margin-bottom: 15px; }
+.menu-list { list-style: none; padding: 0; margin: 0; }
 
-.sidebar li {
+.menu-item {
     padding: 12px 15px;
+    border-radius: 8px;
+    color: #475569;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: 0.2s;
     margin-bottom: 5px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.3s;
 }
 
-.sidebar li:hover, .sidebar li.active {
-    background-color: #004d99;
-}
+.menu-item:hover { background: #f8fafc; color: var(--primary-green); }
+.menu-item.active { background: var(--active-bg); color: var(--active-text); }
 
-.btn-logout {
-    background-color: #d9534f;
-    color: white;
-    border: none;
-    padding: 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-}
-
-/* Área de Conteúdo */
+/* 3. Área de Conteúdo Principal */
 .content {
     flex: 1;
+    margin-left: 260px; /* Respeita a largura da sidebar */
     padding: 40px;
+    min-width: 0;
 }
 
-.stats-grid {
+.content-header { margin-bottom: 30px; }
+.header-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.date-subtitle { font-size: 0.9rem; color: var(--text-muted); }
+
+/* 4. Dashboard: Métricas (Os 6 cards) */
+.dashboard-metrics {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 25px;
+    grid-template-columns: repeat(6, 1fr); /* 6 colunas no desktop */
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.metric-card {
+    background: white;
+    padding: 20px 15px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.metric-card span { font-size: 11px; color: var(--text-muted); font-weight: 700; display: block; height: 32px; }
+.metric-value.blue { color: var(--blue-royal); font-size: 2rem; font-weight: 800; margin-top: 10px; }
+
+/* 5. Dashboard: Gráficos */
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
     margin-bottom: 30px;
 }
 
-.card {
+.chart-container {
     background: white;
-    padding: 25px;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    min-height: 300px;
 }
 
-.stat-card h4 {
-    margin: 0;
-    color: #777;
-    font-size: 0.9rem;
+.chart-header { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 20px; }
+.chart-canvas-wrapper { position: relative; height: 200px; width: 100%; }
+
+/* Barras de Progresso Customizadas */
+.bar-item { margin-bottom: 15px; }
+.bar-info { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
+.bar-track { background: #f1f5f9; height: 8px; border-radius: 10px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 10px; background: #e2e8f0; transition: width 0.8s ease; }
+.bar-fill.purple { background: #a855f7; }
+
+/* 6. Tabelas e Cards Genéricos */
+.card { background: white; padding: 25px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.ticket-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.ticket-table th { text-align: left; padding: 12px; border-bottom: 2px solid #f1f5f9; font-size: 11px; text-transform: uppercase; color: var(--text-muted); }
+.ticket-table td { padding: 14px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+
+/* Botão Atender */
+.btn-atender {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 12px;
 }
+.btn-atender:hover { background: #e2e8f0; }
 
-.stat-card h2 {
-    margin: 10px 0 0 0;
-    font-size: 2.2rem;
-}
-
-.blue h2 { color: #007bff; }
-.yellow h2 { color: #f0ad4e; }
-.green h2 { color: #5cb85c; }
-
-/* Simulação de Gráfico */
-.grafico-container {
-    height: 200px;
+/* 7. Botão de Sair */
+.btn-logout-card {
+    margin-top: auto;
+    background: #fee2e2;
+    color: #b91c1c;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
     display: flex;
-    align-items: flex-end;
-    gap: 20px;
-    padding: 20px 0;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+.btn-logout-card:hover { background: #fecaca; }
+
+/* 8. Animações de Visão */
+.view-section { animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* 9. Responsividade */
+@media (max-width: 1300px) {
+    .dashboard-metrics { grid-template-columns: repeat(3, 1fr); }
+    .charts-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-.bar {
-    background-color: #007bff;
-    width: 40px;
-    border-radius: 4px 4px 0 0;
-    position: relative;
-    text-align: center;
-}
-
-.bar span {
-    position: absolute;
-    top: -25px;
-    left: 0;
-    width: 100%;
-    font-size: 0.8rem;
-    font-weight: bold;
+@media (max-width: 900px) {
+    .charts-grid { grid-template-columns: 1fr; }
+    .dashboard-metrics { grid-template-columns: repeat(2, 1fr); }
 }
