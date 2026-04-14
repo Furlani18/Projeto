@@ -2,56 +2,153 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Administrativo - GESISTEC</title>
     <link rel="stylesheet" href="style-admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="admin-container">
         <nav class="sidebar">
             <div class="sidebar-header">
                 <h3>GESISTEC Admin</h3>
-                <p id="nomeAdmin">Carregando...</p>
+                <p id="nomeAdmin">Admin Gesistec</p>
             </div>
-            <hr>
-            <ul>
-                <li class="active">Dashboard</li>
-                <li>Atendimento de Tickets</li>
-                <li>Cadastro de Usuários</li> <li>Relatórios</li>
-            </ul>
-            <button onclick="logout()" class="btn-logout">Sair</button>
+            <div class="sidebar-menu">
+                <p class="menu-title">Menu</p>
+                <ul class="menu-list">
+                    <li class="menu-item active" id="menu-dashboard" onclick="navegarMenu('dashboardView')">
+                        <i class="fas fa-th-large"></i> Dashboard
+                    </li>
+                    <li class="menu-item" id="menu-atendimento" onclick="navegarMenu('ticketsSection')">
+                        <i class="fas fa-ticket-alt"></i> Atendimento
+                    </li>
+                    <li class="menu-item" id="menu-usuarios" onclick="navegarMenu('usersView')">
+                        <i class="fas fa-users"></i> Usuários
+                    </li>
+                    <li class="menu-item" id="menu-relatorios" onclick="navegarMenu('reportsView')">
+                        <i class="fas fa-chart-line"></i> Relatórios
+                    </li>
+                </ul>
+            </div>
+            <button onclick="logout()" class="btn-logout-card">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </button>
         </nav>
 
         <main class="content">
-            <header class="content-header">
-                <h2>Visão Geral do Sistema</h2>
-                <p id="dataAtual"></p>
-            </header>
-
-            <section class="stats-grid">
-                <div class="card stat-card blue">
-                    <h4>Tickets Abertos</h4>
-                    <h2 id="totalAbertos">0</h2>
-                </div>
-                <div class="card stat-card yellow">
-                    <h4>Pendente/Aguardando</h4>
-                    <h2 id="totalPendentes">0</h2>
-                </div>
-                <div class="card stat-card green">
-                    <h4>Finalizados</h4>
-                    <h2 id="totalFinalizados">0</h2>
-                </div>
-            </section>
             
-            <section class="chart-section">
-                <div class="card">
-                    <h3>Tickets por Cliente</h3>
-                    <div id="graficoPlaceholder" class="grafico-container">
-                        <div class="bar-chart" id="listaGrafico">
-                            <p style="color: #666;">Nenhum dado para exibir no momento.</p>
+            <div id="dashboardView" class="view-section">
+                <header class="content-header">
+                    <div class="header-title-row">
+                        <div>
+                            <h2>Visão Geral do Sistema</h2>
+                            <p id="dataAtual" class="date-subtitle"></p>
+                        </div>
+                        <div class="header-actions">
+                            <button class="btn-secondary">Novo Chamado</button>
+                            <button class="btn-primary" onclick="navegarMenu('reportsView')">Relatórios</button>
                         </div>
                     </div>
+                </header>
+
+                <section class="dashboard-metrics">
+                    <div class="metric-card"><span>Tickets vencidos</span><h3 id="countVencidos" class="metric-value blue">0</h3></div>
+                    <div class="metric-card"><span>Tickets vencendo hoje</span><h3 id="countVencendoHoje" class="metric-value blue">0</h3></div>
+                    <div class="metric-card"><span>Tickets abertos</span><h3 id="countAbertos" class="metric-value blue">0</h3></div>
+                    <div class="metric-card"><span>Tickets em espera</span><h3 id="countEspera" class="metric-value blue">0</h3></div>
+                    <div class="metric-card"><span>Tickets Não Atribuidos</span><h3 id="countNaoAtribuidos" class="metric-value blue">0</h3></div>
+                    <div class="metric-card"><span>Tickets monitorados</span><h3 id="countMonitorados" class="metric-value blue">0</h3></div>
+                </section>
+
+                <section class="charts-grid">
+                    <div class="chart-container">
+                        <div class="chart-header"><span>Por prioridade</span><i class="fas fa-ellipsis-v"></i></div>
+                        <div class="chart-canvas-wrapper"><canvas id="chartPrioridade"></canvas></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-header"><span>Por status</span><i class="fas fa-ellipsis-v"></i></div>
+                        <div class="chart-canvas-wrapper"><canvas id="chartStatus"></canvas></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-header"><span>Novos e meus tickets</span><i class="fas fa-ellipsis-v"></i></div>
+                        <div id="barChartContainer" class="chart-bars-content"></div>
+                    </div>
+                </section>
+            </div>
+
+            <div id="ticketsSection" class="view-section" style="display: none;">
+                <header class="content-header">
+                    <h2>Atendimento de Tickets</h2>
+                    <p>Gerencie e responda aos chamados pendentes no sistema.</p>
+                </header>
+
+                <div id="areaRespostaAdmin" class="card card-resposta-admin" style="display: none; margin-bottom: 25px; border-left: 5px solid #2563eb;">
+                    <div class="resposta-header">
+                        <h4>Respondendo Chamado <span id="idTicketRespondendo" style="color: #2563eb;">#0000</span></h4>
+                        <button class="btn-fechar-card" onclick="document.getElementById('areaRespostaAdmin').style.display='none'">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <textarea id="textoRespostaAdmin" placeholder="Escreva aqui sua resposta para o cliente..." rows="4"></textarea>
+                    <div class="acoes-resposta">
+                        <button class="btn-update-action" onclick="salvarRespostaLivre()">
+                            <i class="fas fa-paper-plane"></i> Enviar Resposta
+                        </button>
+                    </div>
                 </div>
-            </section>
+
+                <div class="card table-card">
+                    <div class="table-header">
+                        <h3>Lista de Atendimentos Recentes</h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="ticket-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Assunto</th>
+                                    <th>Prioridade</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ticketsByClientList">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="usersView" class="view-section" style="display: none;">
+                <header class="content-header">
+                    <h2>Gestão de Usuários</h2>
+                    <p>Gerencie colaboradores e clientes da plataforma.</p>
+                </header>
+                <div class="card">
+                    <div class="empty-state-card">
+                        <i class="fas fa-users-cog"></i>
+                        <p>Interface de gerenciamento de usuários em desenvolvimento.</p>
+                        <button class="btn-primary">Criar Novo Usuário</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="reportsView" class="view-section" style="display: none;">
+                <header class="content-header">
+                    <h2>Relatórios Analíticos</h2>
+                    <p>Performance de equipe e cumprimento de SLA.</p>
+                </header>
+                <div class="card">
+                    <div class="empty-state-card">
+                        <i class="fas fa-file-pdf"></i>
+                        <p>Selecione os filtros acima para gerar e exportar relatórios.</p>
+                        <button class="btn-secondary">Gerar PDF</button>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
