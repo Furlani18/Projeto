@@ -8,24 +8,31 @@
 </head>
 <body>
     <div class="login-container">
-        <div class="login-card">
-            <h2>GESISTEC</h2> 
-            <p>Gerenciamento de Sistemas de Tecnologia</p>
-            
-            <form id="loginForm">
-                <div class="input-group">
-                    <label for="email">E-mail</label> <input type="email" id="email" placeholder="seu@email.com" required>
-                </div>
+        <div class="login-wrapper">
+            <div class="login-card">
+                <h1 class="login-title">Entrar</h1>
                 
-                <div class="input-group">
-                    <label for="password">Senha</label> <input type="password" id="password" placeholder="••••••••" required>
-                </div>
+                <form id="loginForm" class="login-form">
+                    <div class="input-group">
+                        <label for="email">E-mail</label>
+                        <input type="email" id="email" placeholder="" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="password">Senha</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="password" placeholder="" required>
+                            <span class="password-dot">•</span>
+                        </div>
+                    </div>
 
-                <div class="form-footer">
-                    <a href="#" class="forgot-password">Esqueceu a senha?</a> </div>
+                    <div class="forgot-password-container">
+                        <a href="#" class="forgot-password">Esqueceu a senha?</a>
+                    </div>
 
-                <button type="submit" class="btn-entrar">Entrar</button>
-            </form>
+                    <button type="submit" class="btn-entrar">Entrar</button>
+                </form>
+            </div>
         </div>
     </div>
     <script src="script.js"></script>
