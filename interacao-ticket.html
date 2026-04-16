@@ -46,19 +46,28 @@
                             <tbody id="tabelaAnexos">
                                 </tbody>
                         </table>
-                        <div class="upload-area">
-                            <input type="file" id="inputArquivo" onchange="uploadDireto(this)">
-                            <label for="inputArquivo" class="btn-upload"><i class="fas fa-paperclip"></i> Anexar documento diretamente</label>
-                        </div>
-                    </div>
 
                     <div class="conversation-section">
                         <h4>Conversas</h4>
                         <div id="historicoConversa" class="chat-box"></div>
-                        <div class="reply-area">
-                            <textarea id="textoResposta" placeholder="Escreva uma resposta..."></textarea>
-                            <button class="btn-primary" onclick="enviarResposta()">Enviar Resposta</button>
-                        </div>
+                     <div class="reply-area">
+
+    <textarea id="textoResposta" placeholder="Escreva uma resposta..."></textarea>
+
+    <!-- BOTÃO DE ANEXO -->
+    <div style="margin-top: 8px;">
+        <input type="file" id="anexoResposta" style="display: none;">
+        <label for="anexoResposta" class="btn-upload">
+            <i class="fas fa-paperclip"></i> Anexar arquivo
+        </label>
+    </div>
+
+    <!-- 👀 PREVIEW -->
+    <div id="previewAnexo" style="margin-top: 8px;"></div>
+
+    <button class="btn-primary" onclick="enviarResposta()">Enviar Resposta</button>
+
+</div>
                     </div>
                 </section>
             </main>
