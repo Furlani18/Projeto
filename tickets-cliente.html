@@ -57,152 +57,194 @@
             </section>
 
             <template id="templateInteracao">
-                <tr class="row-interacao">
-                    <td colspan="5">
-                        <div class="inline-detail-container">
-                            <header class="detail-header-bar">
-                                <div class="header-left">
-                                    <div class="breadcrumb-container">
-                                        <span class="breadcrumb-text">Tickets</span>
-                                        <span class="breadcrumb-separator">/</span>
-                                        <span class="breadcrumb-id">#<span id="ticketIdDisplay"></span></span>
+    <tr class="row-interacao">
+        <td colspan="5">
+            <div class="inline-detail-container">
+                <header class="detail-header-bar">
+                    <div class="header-left">
+                        <div class="breadcrumb-container">
+                            <span class="breadcrumb-text">Tickets</span>
+                            <span class="breadcrumb-separator">/</span>
+                            <span class="breadcrumb-id">#<span id="ticketIdDisplay"></span></span>
+                        </div>
+                        <div class="title-row">
+                            <span class="badge-vencido">Vencida</span>
+                            <i class="fas fa-lock-open status-icon-open"></i>
+                            <h4 class="ticket-main-title">Requisição de Melhoria</h4>
+                        </div>
+                    </div>
+                    <div class="detail-actions">
+                        <button class="btn-action-icon"><i class="far fa-star"></i></button>
+                        <button class="btn-action">Compartilhar</button>
+                        <button class="btn-action">Editar</button>
+                        <button class="btn-action primary-action" onclick="document.getElementById('reply-text').focus()">Responder</button>
+                        <button class="btn-action">Associar</button>
+                        <div class="action-divider"></div>
+                        <button class="btn-action close-action" onclick="fecharInline(this)">Fechar</button>
+                    </div>
+                </header>
+
+                <div class="detail-body">
+                    <div class="main-info">
+                        <nav class="detail-tabs">
+                            <button class="active">Detalhes</button>
+                            <button>Tickets relacionados</button>
+                            <button>Tarefas</button>
+                            <button>Ativos</button>
+                            <button>Associações</button>
+                            <button>Aprovações <span class="tab-badge">2</span></button>
+                            <button>Atividade</button>
+                            <button>Resolução</button>
+                        </nav>
+                        
+                        <div class="content-scroll-area">
+                            <p class="content-label">Mais detalhes da solicitação:</p>
+                            <p id="descDoc" class="main-description">Carregando...</p>
+                            
+                            <div id="historicoChat" class="chat-flow"></div>
+
+                            <div class="reply-container">
+                                <textarea id="reply-text" class="reply-input" placeholder="Escreva a sua resposta aqui..."></textarea>
+                                <div class="reply-actions">
+                                    <div class="action-left">
+                                        <input type="file" id="file-input" style="display:none" onchange="prepararAnexo(this)">
+                                        <button type="button" class="btn-reply-attach" onclick="document.getElementById('file-input').click()">
+                                            <i class="fas fa-paperclip"></i> Anexar Ficheiro
+                                        </button>
+                                        <span id="file-preview-name"></span>
                                     </div>
-                                    <div class="title-row">
-                                        <span class="badge-vencido">Vencida</span>
-                                        <i class="fas fa-lock-open status-icon-open"></i>
-                                        <h4 class="ticket-main-title">Requisição de Melhoria</h4>
-                                    </div>
+                                    <button type="button" class="btn-reply-send" onclick="enviarRespostaCliente(ticketAbertoId)">
+                                        Enviar Resposta <i class="fas fa-paper-plane"></i>
+                                    </button>
                                 </div>
-                                <div class="detail-actions">
-                                    <button class="btn-action-icon"><i class="far fa-star"></i></button>
-                                    <button class="btn-action">Compartilhar <i class="fas fa-chevron-down"></i></button>
-                                    <button class="btn-action">Editar</button>
-                                    <button class="btn-action primary-action">Responder <i class="fas fa-chevron-down"></i></button>
-                                    <button class="btn-action">Associar <i class="fas fa-chevron-down"></i></button>
-                                    <div class="action-divider"></div>
-                                    <button class="btn-action close-action" onclick="fecharInline(this)">Fechar</button>
-                                </div>
-                            </header>
+                            </div>
 
-                            <div class="detail-body">
-                                <div class="main-info">
-                                    <nav class="detail-tabs">
-                                        <button class="active">Detalhes</button>
-                                        <button>Tickets relacionados</button>
-                                        <button>Tarefas</button>
-                                        <button>Ativos</button>
-                                        <button>Associações</button>
-                                        <button>Aprovações <span class="tab-badge">2</span></button>
-                                        <button>Atividade</button>
-                                        <button>Resolução</button>
-                                    </nav>
-                                    
-                                    <div class="content-scroll-area">
-                                        <p class="content-label">Mais detalhes da solicitação:</p>
-                                        <p id="descDoc" class="main-description">Carregando...</p>
-                                        
-                                        <div class="attachments-preview-box">
-                                            <p class="preview-label">Anexos (2) <i class="fas fa-chevron-down"></i></p>
-                                            <div class="thumb-grid">
-                                                <div class="thumb-card">
-                                                    <i class="far fa-file-excel icon-excel"></i>
-                                                    <div class="thumb-info"><strong>PROPOSTA.xlsx</strong><span>(2.65 MB)</span></div>
-                                                </div>
-                                                <div class="thumb-card">
-                                                    <i class="far fa-image icon-img"></i>
-                                                    <div class="thumb-info"><strong>UCCDA170.png</strong><span>(1.22 MB)</span></div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="attachments-table-area">
-                                            <h5>Anexos <span class="badge-blue-count" id="countAnexos">0</span></h5>
-                                            <table class="inner-table">
-                                                <thead>
-                                                    <tr><th>Anexo</th><th>Tamanho</th><th>Anexado em</th><th>Anexado por</th></tr>
-                                                </thead>
-                                                <tbody id="listaAnexosDetalhada"></tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <aside class="detail-sidebar-rich">
-                                    <div class="side-card">
-                                        <div class="side-tags">
-                                            <span class="tag-it">IT</span> <span class="tag-text">IT</span>
-                                        </div>
-                                        <h3 class="status-title-side">Pendente</h3>
-                                        <div class="side-prop">
-                                            <span class="label-sm">Prioridade</span>
-                                            <div class="priority-row">
-                                                <span class="square-blue"></span>
-                                                <span id="displayPrioridade">Média</span>
-                                            </div>
-                                        </div>
-                                        <div class="side-prop">
-                                            <span class="label-sm">Resolução pendente <i class="fas fa-pencil-alt"></i></span>
-                                            <div class="sla-row">
-                                                <span class="date-sm" id="dataCriacaoDisplay">---</span>
-                                                <span class="badge-sla" id="slaDisplay"><i class="far fa-clock"></i> ---</span>
-                                            </div>
-                                        </div>
-                                        <div class="side-prop">
-                                            <span class="label-sm">Aprovação</span>
-                                            <span class="badge-approved-side">Aprovada</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="side-card">
-                                        <div class="card-header-sm"><i class="far fa-user"></i> <span>Informações do solicitante</span></div>
-                                        <div class="requester-box">
-                                            <div class="avatar-circle">S</div>
-                                            <div class="req-data">
-                                                <strong id="solicitanteDoc">carregando...</strong>
-                                                <span>Suporte Técnico</span>
-                                            </div>
-                                        </div>
-                                        <button class="btn-link">Ver mais detalhes</button>
-                                        <div class="accordion-btn">
-                                            <i class="far fa-comment-dots"></i> Detailr <i class="fas fa-chevron-down"></i>
-                                        </div>
-                                    </div>
-
-                                    <div class="side-card">
-                                        <div class="card-header-sm"><i class="far fa-comments"></i> <span>Colaborar</span></div>
-                                        <button class="btn-teams-side"><i class="fab fa-microsoft-teams"></i> Teams <i class="fas fa-caret-down"></i></button>
-                                        <button class="btn-add-collab"><i class="fas fa-plus-circle"></i> Começar novo</button>
-                                    </div>
-
-                                    <div class="side-card">
-                                        <div class="card-header-sm"><i class="far fa-list-alt"></i> <span>Propriedades</span></div>
-                                        <div class="edit-fields-grid">
-                                            <div class="field"><label>Prioridade *</label><select id="editPrio"><option>Média</option><option>Alta</option></select></div>
-                                            <div class="field"><label>Status *</label><select><option>Pendente</option></select></div>
-                                        </div>
-                                        <div class="field-labels-row"><span>Urgência</span> <span>Impacto</span></div>
-                                        <button class="btn-update-action" onclick="salvarEdicaoInline()">Atualizar</button>
-                                    </div>
-          
-                                </aside>
+                            <div class="attachments-table-area" style="margin-top: 30px;">
+                                <h5>Documentos do Chamado <span class="badge-blue-count" id="countAnexos">0</span></h5>
+                                <table class="inner-table">
+                                    <thead>
+                                        <tr><th>Anexo</th><th>Tamanho</th><th>Anexado em</th><th>Anexado por</th></tr>
+                                    </thead>
+                                    <tbody id="listaAnexosDetalhada"></tbody>
+                                </table>
                             </div>
                         </div>
-                    </td>
-                </tr>
-            </template>
-        </main>
-    </div>
+                    </div>
 
-    <div id="modalTicket" class="modal">
-        <div class="modal-content">
-            <div class="modal-header"><h3>Abrir Novo Chamado</h3><button onclick="fecharModal()" class="close-btn">&times;</button></div>
-            <form id="formTicket">
-                <div class="form-group"><label>Assunto</label><input type="text" id="assunto" required placeholder="Ex: Ajuste em orçamentos"></div>
-                <div class="form-group"><label>Prioridade</label><select id="prioridade"><option value="Baixa">Baixa</option><option value="Média" selected>Média</option><option value="Alta">Alta</option></select></div>
-                <div class="form-actions"><button type="button" onclick="fecharModal()" class="btn-cancelar">Cancelar</button><button type="submit" class="btn-primary">Criar Ticket</button></div>
-            </form>
+                    <aside class="detail-sidebar-rich">
+                        <div class="side-card">
+                            <div class="side-tags"><span class="tag-it">GESISTEC</span></div>
+                            <h3 class="status-title-side">Pendente</h3>
+                            <div class="side-prop">
+                                <span class="label-sm">Prioridade</span>
+                                <div class="priority-row">
+                                    <span class="square-blue"></span>
+                                    <span id="displayPrioridade">Média</span>
+                                </div>
+                            </div>
+                            <div class="side-prop">
+                                <span class="label-sm">SLA de Resolução</span>
+                                <div class="sla-row">
+                                    <span class="date-sm" id="dataCriacaoDisplay">---</span>
+                                    <span class="badge-sla" id="slaDisplay"><i class="far fa-clock"></i> ---</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="side-card">
+                            <div class="card-header-sm"><i class="far fa-user"></i> <span>Solicitante</span></div>
+                            <div class="requester-box">
+                                <div class="avatar-circle">U</div>
+                                <div class="req-data">
+                                    <strong id="solicitanteDoc">usina@cliente.com</strong>
+                                    <span>Usina Cerradinho</span>
+                                </div>
+                            </div>
+                            <button class="btn-link">Ver mais detalhes</button>
+                        </div>
+
+                        <div class="side-card">
+                            <div class="card-header-sm"><i class="far fa-comments"></i> <span>Colaborar</span></div>
+                            <button class="btn-teams-side"><i class="fab fa-microsoft-teams"></i> Teams <i class="fas fa-caret-down"></i></button>
+                            <button class="btn-add-collab"><i class="fas fa-plus-circle"></i> Começar novo</button>
+                        </div>
+
+                        <div class="side-card">
+                            <div class="card-header-sm"><i class="far fa-list-alt"></i> <span>Propriedades</span></div>
+                            <div class="edit-fields-grid">
+                                <div class="field">
+                                    <label>Prioridade *</label>
+                                    <select id="editPrio"><option>Baixa</option><option selected>Média</option><option>Alta</option></select>
+                                </div>
+                                <div class="field">
+                                    <label>Status</label>
+                                    <select id="editStatus"><option value="Pendente">Pendente</option><option value="Finalizado">Finalizado</option></select>
+                                </div>
+                                <button class="btn-update-action" onclick="salvarEdicaoInline()">Atualizar</button>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </td>
+    </tr>
+</template>
+
+   <div id="modalTicket" class="modal">
+    <div class="modal-content">
+
+        <div class="modal-header">
+            <div class="modal-title-group">
+                <i class="fas fa-plus-circle"></i>
+                <h3>Abrir Novo Chamado</h3>
+            </div>
+            <button onclick="fecharModal()" class="close-btn">&times;</button>
         </div>
+
+        <form id="formTicket">
+            <div class="modal-body">
+
+                <div class="form-group">
+                    <label>Assunto <span class="required">*</span></label>
+                    <input type="text" id="assunto" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Prioridade</label>
+                    <select id="prioridade">
+                        <option value="Baixa">Baixa</option>
+                        <option value="Média" selected>Média</option>
+                        <option value="Alta">Alta</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Descrição</label>
+                    <textarea id="descricao"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Anexo</label>
+                    <input type="file" id="anexoTicket">
+                </div>
+
+                <!-- PREVIEW -->
+                <div id="previewAnexoTicket" style="display:none;">
+                    <strong id="nomePreviewTicket"></strong>
+                    <span id="tamanhoPreviewTicket"></span>
+                    <button type="button" onclick="removerPreviewTicket()">Remover</button>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" onclick="fecharModal()">Cancelar</button>
+                <button type="submit">Criar Chamado</button>
+            </div>
+        </form>
+
     </div>
+</div>
 
     <script src="app-tickets.js"></script>
 </body>
