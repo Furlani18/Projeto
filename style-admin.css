@@ -263,3 +263,46 @@ body {
 }
 
 .btn-admin-send:hover { background: #1d4ed8; }
+
+
+/* Variáveis para o Admin */
+:root {
+    --admin-blue: #2563eb;
+    --admin-dark: #1e293b;
+    --bg-gray: #f1f5f9;
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* Layout Corrigido: Sidebar Fixa e Conteúdo com Margem */
+.admin-container { display: flex; }
+
+.sidebar {
+    width: 260px;
+    background-color: var(--admin-dark);
+    height: 100vh;
+    position: fixed; /* Fixa para não sumir no scroll */
+    padding: 24px;
+    color: white;
+}
+
+.content {
+    margin-left: 260px; /* Resolve o texto escondido atrás do menu */
+    padding: 40px;
+    width: calc(100% - 260px);
+    background-color: var(--bg-gray);
+}
+
+/* Cards de Métricas Estilizados */
+.metric-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: var(--shadow-sm);
+    border-left: 4px solid var(--admin-blue);
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 8px 0 0 0;
+}
