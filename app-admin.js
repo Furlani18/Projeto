@@ -5,7 +5,7 @@ if (!usuarioSessao || (usuarioSessao.perfil !== 'admin' && usuarioSessao.perfil 
     window.location.href = 'index.html';
 }
 
-// Inicialização de textos e data
+// Inicialização de textos e data no Header
 const elNome = document.getElementById('nomeAdmin');
 if (elNome) elNome.innerText = usuarioSessao.nome;
 
@@ -16,23 +16,18 @@ if (elData) {
     });
 }
 
-// Variáveis Globais
-let ticketsData = [];
+// Variáveis Globais de Controle
 let chartPrioridade, chartStatus;
-let idTicketAtivo = null; // Controla qual ticket o admin está respondendo agora
+let anexoAdminTemp = null; // Memória para o arquivo antes do envio unificado
 
 /**
- * NAVEGAÇÃO ENTRE TELAS (Abas do Menu Lateral)
+ * NAVEGAÇÃO ENTRE TELAS
  */
 function navegarMenu(viewId) {
-    // Esconde todas as seções
     document.querySelectorAll('.view-section').forEach(s => s.style.display = 'none');
-
-    // Mostra a seção desejada
     const target = document.getElementById(viewId);
     if (target) target.style.display = 'block';
 
-    // Atualiza classe 'active' no menu lateral
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
     
     const menuMap = {
@@ -45,45 +40,104 @@ function navegarMenu(viewId) {
     const activeMenuId = menuMap[viewId];
     if (activeMenuId) document.getElementById(activeMenuId).classList.add('active');
 
-    // Recarrega dados se for o Dashboard ou Atendimento
     carregarEstatisticas();
 }
 
 /**
- * CARREGAMENTO DE DADOS E MÉTRICAS (Dashboard)
+ * LÓGICA DE ANEXO (Unificada com a Mensagem)
+ */
+function prepararAnexoAdmin(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        anexoAdminTemp = {
+            nome: file.name,
+            tamanho: (file.size / 1024).toFixed(2) + " KB",
+            conteudo: e.target.result,
+            data: new Date().toISOString()
+        };
+        const preview = document.getElementById('preview-anexo-admin');
+        if (preview) preview.innerText = "📎 " + file.name;
+    };
+    reader.readAsDataURL(file);
+}
+
+/**
+ * ENVIO DE RESPOSTA (Mensagem + Anexo)
+ */
+function enviarRespostaAdmin() {
+    const campoTexto = document.getElementById('textoRespostaAdmin');
+    const idTicket = document.getElementById('idTicketResponder').innerText;
+    const respostaTexto = campoTexto.value;
+
+    if (!respostaTexto.trim() && !anexoAdminTemp) {
+        alert("Por favor, digite uma mensagem ou anexe um arquivo.");
+        return;
+    }
+
+    let listaTickets = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
+    const index = listaTickets.findIndex(t => t.id == idTicket);
+
+    if (index !== -1) {
+        // Inicializa array de mensagens se não existir
+        if (!listaTickets[index].mensagens) listaTickets[index].mensagens = [];
+
+        const novaMensagem = {
+            autor: usuarioSessao.nome,
+            perfil: "suporte",
+            texto: respostaTexto,
+            data: new Date().toISOString(),
+            anexo: anexoAdminTemp // Envia o objeto de anexo junto com o texto
+        };
+
+        listaTickets[index].mensagens.push(novaMensagem);
+        listaTickets[index].status = "Em Atendimento"; 
+        
+        localStorage.setItem('tickets_gesistec', JSON.stringify(listaTickets));
+
+        // Limpeza de Interface
+        campoTexto.value = "";
+        anexoAdminTemp = null;
+        document.getElementById('preview-anexo-admin').innerText = "";
+        document.getElementById('areaRespostaAdmin').style.display = 'none';
+        
+        alert("Resposta enviada com sucesso!");
+        carregarEstatisticas(); 
+    }
+}
+
+/**
+ * DASHBOARD: MÉTRICAS E GRÁFICOS
  */
 function carregarEstatisticas() {
     const tickets = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
-    ticketsData = tickets;
 
     const setMetric = (id, valor) => {
         const el = document.getElementById(id);
         if (el) el.innerText = valor;
     };
 
+    // Filtros de métricas reais para a GESISTEC
     const pendentes = tickets.filter(t => t.status === 'Pendente');
+    const emAtendimento = tickets.filter(t => t.status === 'Em Atendimento');
 
-    // Preenche os 6 cards do storyboard
-    setMetric('countVencidos', pendentes.length > 0 ? 1 : 0); 
-    setMetric('countVencendoHoje', 0);
+    setMetric('countVencidos', tickets.filter(t => t.prioridade === 'Alta' && t.status !== 'Finalizado').length); 
     setMetric('countAbertos', pendentes.length);
-    setMetric('countEspera', 0);
+    setMetric('countEspera', emAtendimento.length);
     setMetric('countNaoAtribuidos', pendentes.length);
-    setMetric('countMonitorados', 1);
+    setMetric('countMonitorados', tickets.length);
 
-    // Renderiza a parte visual
     renderizarGraficosDonut(tickets);
     renderizarBarrasProgresso(tickets);
     renderizarTabelaGeral(tickets);
 }
 
-/**
- * GRÁFICOS DE ROSCA (Chart.js)
- */
 function renderizarGraficosDonut(tickets) {
-    const config = (data, colors) => ({
+    const config = (data, labels, colors) => ({
         type: 'doughnut',
-        data: { datasets: [{ data, backgroundColor: colors, borderWidth: 0, cutout: '75%' }] },
+        data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0, cutout: '75%' }] },
         options: { plugins: { legend: { display: false } }, maintainAspectRatio: false }
     });
 
@@ -94,7 +148,7 @@ function renderizarGraficosDonut(tickets) {
             tickets.filter(t => t.prioridade === 'Baixa').length,
             tickets.filter(t => t.prioridade === 'Média').length,
             tickets.filter(t => t.prioridade === 'Alta').length
-        ], ['#f97316', '#2563eb', '#ef4444']));
+        ], ['Baixa', 'Média', 'Alta'], ['#f97316', '#2563eb', '#ef4444']));
     }
 
     const ctxSta = document.getElementById('chartStatus');
@@ -102,111 +156,73 @@ function renderizarGraficosDonut(tickets) {
         if (chartStatus) chartStatus.destroy();
         chartStatus = new Chart(ctxSta, config([
             tickets.filter(t => t.status === 'Pendente').length,
+            tickets.filter(t => t.status === 'Em Atendimento').length,
             tickets.filter(t => t.status === 'Finalizado').length
-        ], ['#2563eb', '#10b981']));
+        ], ['Pendente', 'Atendimento', 'Finalizado'], ['#2563eb', '#facc15', '#10b981']));
     }
 }
 
-/**
- * GRÁFICO DE BARRAS (Prioridades)
- */
 function renderizarBarrasProgresso(tickets) {
     const container = document.getElementById('barChartContainer');
     if (!container) return;
 
-    const prioridades = ['Baixa', 'Média', 'Alta', 'Urgente'];
+    const prioridades = ['Baixa', 'Média', 'Alta'];
     const total = tickets.length || 1;
 
     container.innerHTML = prioridades.map(prio => {
         const qtd = tickets.filter(t => t.prioridade === prio).length;
         const porc = (qtd / total) * 100;
         return `
-            <div class="bar-item">
-                <div class="bar-info"><span>${prio}</span> <span>${qtd}</span></div>
-                <div class="bar-track"><div class="bar-fill ${prio === 'Baixa' ? 'purple' : ''}" style="width: ${porc}%"></div></div>
+            <div class="bar-item" style="margin-bottom: 15px;">
+                <div class="bar-info" style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:5px;">
+                    <strong>${prio}</strong> <span>${qtd}</span>
+                </div>
+                <div class="bar-track" style="background:#f1f5f9; height:8px; border-radius:10px; overflow:hidden;">
+                    <div class="bar-fill" style="width: ${porc}%; background:#2563eb; height:100%;"></div>
+                </div>
             </div>
         `;
     }).join('');
 }
 
 /**
- * ATENDIMENTO: TABELA E RESPOSTA
+ * TABELA DE ATENDIMENTO
  */
 function renderizarTabelaGeral(tickets) {
     const tabela = document.getElementById('ticketsByClientList');
     if (!tabela) return;
 
     if (tickets.length === 0) {
-        tabela.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhum ticket encontrado.</td></tr>';
+        tabela.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">Nenhum chamado pendente.</td></tr>';
         return;
     }
 
-    tabela.innerHTML = tickets.slice().reverse().map(ticket => {
-        const statusClass = ticket.status === 'Pendente' ? 'pendente' : 'finalizado';
-        return `
-            <tr>
-                <td><strong>#${ticket.id}</strong></td>
-                <td>${ticket.assunto}</td>
-                <td>${ticket.prioridade}</td>
-                <td><span class="badge ${statusClass}">${ticket.status}</span></td>
-                <td><button class="btn-atender" onclick="irParaInteracao(${ticket.id})">Atender</button></td>
-            </tr>
-        `;
-    }).join('');
+    tabela.innerHTML = tickets.slice().reverse().map(ticket => `
+        <tr>
+            <td><strong>#${ticket.id}</strong></td>
+            <td>${ticket.assunto}</td>
+            <td><span style="font-weight:600;">${ticket.prioridade}</span></td>
+            <td><span class="badge ${ticket.status.toLowerCase().replace(' ', '-')}">${ticket.status}</span></td>
+            <td><button class="btn-atender" onclick="abrirRespostaAdmin(${ticket.id})">Atender</button></td>
+        </tr>
+    `).join('');
 }
 
-// Abre o card de resposta para um ticket específico
-function irParaInteracao(id) {
-    idTicketAtivo = id;
-    const areaResposta = document.getElementById('areaRespostaAdmin');
-    const displayId = document.getElementById('idTicketRespondendo');
-
-    if (areaResposta && displayId) {
-        areaResposta.style.display = 'block';
-        displayId.innerText = `#${id}`;
+function abrirRespostaAdmin(id) {
+    const area = document.getElementById('areaRespostaAdmin');
+    const display = document.getElementById('idTicketResponder');
+    if (area && display) {
+        area.style.display = 'block';
+        display.innerText = id;
         document.getElementById('textoRespostaAdmin').focus();
-        // Rola suavemente até o topo da área de atendimento
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 }
 
-/**
- * SALVAR RESPOSTA (Onde a mágica acontece)
- */
-function salvarRespostaLivre() {
-    const campoTexto = document.getElementById('textoRespostaAdmin');
-    const resposta = campoTexto.value;
-
-    if (!idTicketAtivo) return alert("Por favor, selecione um ticket na tabela primeiro.");
-    if (!resposta.trim()) return alert("A resposta não pode estar vazia.");
-
-    // 1. Carrega banco de dados
-    let lista = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
-    const index = lista.findIndex(t => t.id === idTicketAtivo);
-
-    if (index !== -1) {
-        // 2. Garante estrutura de mensagens
-        if (!lista[index].mensagens) lista[index].mensagens = [];
-
-        // 3. Adiciona a mensagem do colaborador
-        lista[index].mensagens.push({
-            autor: usuarioSessao.nome,
-            perfil: "suporte", // Isso permite que o CSS do cliente saiba que é suporte
-            texto: resposta,
-            data: new Date().toISOString()
-        });
-
-        // 4. Salva no LocalStorage
-        localStorage.setItem('tickets_gesistec', JSON.stringify(lista));
-
-        // 5. Limpa interface
-        campoTexto.value = "";
-        document.getElementById('areaRespostaAdmin').style.display = 'none';
-        idTicketAtivo = null;
-
-        alert("Resposta enviada com sucesso! O cliente já pode visualizar.");
-        carregarEstatisticas(); // Atualiza a tabela
-    }
+function fecharAreaResposta() {
+    document.getElementById('areaRespostaAdmin').style.display = 'none';
+    anexoAdminTemp = null;
+    document.getElementById('preview-anexo-admin').innerText = "";
 }
 
 function logout() {
