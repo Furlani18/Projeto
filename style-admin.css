@@ -128,15 +128,23 @@ body {
 
 /* Botão Atender */
 .btn-atender {
-    background: #f1f5f9;
-    border: 1px solid #cbd5e1;
-    padding: 6px 12px;
+    background: #2563eb; /* Azul Royal do seu dashboard */
+    color: white;
+    border: none;
+    padding: 6px 14px;
     border-radius: 6px;
-    cursor: pointer;
+    font-size: 13px;
     font-weight: 700;
-    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
-.btn-atender:hover { background: #e2e8f0; }
+
+.btn-atender:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
 
 /* 7. Botão de Sair */
 .btn-logout-card {
@@ -169,3 +177,89 @@ body {
     .charts-grid { grid-template-columns: 1fr; }
     .dashboard-metrics { grid-template-columns: repeat(2, 1fr); }
 }
+
+
+/* Container Principal da Resposta Admin */
+.reply-container-admin {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-left: 4px solid #2563eb; /* Azul corporativo Admin */
+}
+
+.reply-header-admin {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.reply-header-admin h4 {
+    margin: 0;
+    font-size: 14px;
+    color: #1e293b;
+    font-weight: 700;
+}
+
+/* Área de Texto Refinada */
+.reply-input-admin {
+    width: 100%;
+    border: 1px solid #f1f5f9;
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: inherit;
+    font-size: 14px;
+    color: #334155;
+    resize: none;
+    outline: none;
+    min-height: 80px;
+    transition: 0.2s;
+}
+
+.reply-input-admin:focus {
+    background: #ffffff;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Barra de Ações */
+.reply-actions-admin {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.btn-admin-attach {
+    background: #f1f5f9;
+    color: #475569;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-admin-send {
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-admin-send:hover { background: #1d4ed8; }
