@@ -615,3 +615,45 @@ td {
     margin-left: 10px;
     font-weight: 600;
 }
+
+
+/* Variáveis para o Cliente */
+:root {
+    --usina-green: #1a5c37;
+    --usina-hover: #14462a;
+    --status-pendente: #f59e0b;
+}
+
+/* Tabela de Tickets Moderna */
+.ticket-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 10px; /* Dá o efeito de linhas flutuantes */
+}
+
+.ticket-table tr {
+    background: white;
+    transition: transform 0.2s;
+}
+
+.ticket-table tr:hover {
+    transform: scale(1.01);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.ticket-table td {
+    padding: 16px;
+    border: none;
+}
+
+/* Botão de Abrir Chamado */
+.btn-primary {
+    background-color: var(--usina-green);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 700;
+    transition: 0.3s;
+}
+
+.btn-primary:hover { background-color: var(--usina-hover); }
