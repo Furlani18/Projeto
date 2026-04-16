@@ -343,3 +343,58 @@ body {
     font-weight: 800;
     margin-left: 8px;
 }
+
+
+/* Card de Interação (Estilo Foto 2) */
+.interaction-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+/* Nome e Data no Chat */
+.interaction-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: #64748b;
+}
+
+/* Container de Resposta Unificada */
+.reply-container {
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 24px;
+}
+
+.reply-input {
+    width: 100%;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    min-height: 80px;
+    resize: none;
+}
+
+/* Botões da Barra de Resposta */
+.reply-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 12px;
+}
+
+.btn-reply-send {
+    background: var(--admin-blue); /* Fica azul no admin e verde no cliente */
+    color: white;
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-weight: 700;
+}
