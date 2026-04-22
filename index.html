@@ -3,38 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - GESISTEC</title>
+    <title>Login - GESISTEC Gestão Tecnológica</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-wrapper">
-            <div class="login-card">
-                <h1 class="login-title">Entrar</h1>
-       
-                <form id="loginForm" class="login-form">
-                    <div class="input-group">
-                        <label for="email">E-mail</label>
-                        <input type="email" id="email" placeholder="" required>
-                    </div>
-                    
-                    <div class="input-group">
-                        <label for="password">Senha</label>
-                        <div class="password-wrapper">
-                            <input type="password" id="password" placeholder="" required>
-                            <span class="password-dot">•</span>
-                        </div>
-                    </div>
+    <div class="login-page-full">
+        <main class="login-card">
+            <header class="login-header">
+                <div class="logo-horizontal">
+                    <h1>GESISTEC</h1>
+                    <span>Gestão Tecnológica</span>
+                </div>
+                <p class="login-subtitle">Selecione seu perfil para acessar o portal</p>
+            </header>
 
-                    <div class="forgot-password-container">
-                        <a href="#" class="forgot-password">Esqueceu a senha?</a>
-                    </div>
-
-                    <button type="submit" class="btn-entrar">Entrar</button>
-                </form>
+            <div class="role-selector">
+                <button type="button" id="btn-cliente" class="role-btn active" onclick="selecionarPerfil('cliente')">
+                    <i class="fas fa-user"></i>
+                    <span>Cliente</span>
+                </button>
+                <button type="button" id="btn-equipe" class="role-btn" onclick="selecionarPerfil('colaborador')">
+                    <i class="fas fa-headset"></i>
+                    <span>Equipe</span>
+                </button>
             </div>
-        </div>
+
+            <form id="loginForm" class="login-form">
+                <input type="hidden" id="perfilSelecionado" value="cliente">
+
+                <div class="form-group">
+                    <label for="email">E-mail Corporativo</label>
+                    <div class="input-wrapper">
+                        <i class="far fa-envelope"></i>
+                        <input type="email" id="email" placeholder="seu@email.com" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="label-row">
+                        <label for="password">Senha</label>
+                        <a href="#" class="forgot-link">Esqueceu a senha?</a>
+                    </div>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="password" placeholder="••••••••" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-login-submit">
+                    Entrar no Sistema <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+
+            <footer class="login-footer">
+                <p>&copy; 2026 GESISTEC - Todos os direitos reservados.</p>
+            </footer>
+        </main>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
