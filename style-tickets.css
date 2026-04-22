@@ -657,3 +657,32 @@ td {
 }
 
 .btn-primary:hover { background-color: var(--usina-hover); }
+
+/* --- Badges de Categoria (UI Cloud) --- */
+.type-badge {
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+/* Estilização por Tipo */
+.type-erro { 
+    background: #fee2e2; 
+    color: #ef4444; 
+    border: 1px solid rgba(239, 68, 68, 0.1); 
+}
+
+.type-melhoria { 
+    background: #e0f2fe; 
+    color: #0284c7; 
+    border: 1px solid rgba(2, 132, 199, 0.1); 
+}
+
+.type-duvida { 
+    background: #fef9c3; 
+    color: #a16207; 
+    border: 1px solid rgba(161, 98, 7, 0.1); 
+}
