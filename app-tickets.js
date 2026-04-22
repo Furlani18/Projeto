@@ -72,6 +72,46 @@ const btnMsg = document.querySelector('.btn-reply-send');
 if(btnMsg) {
     btnMsg.onclick = () => enviarRespostaCliente(id);
 }
+
+/**
+ * Salva as alterações de Prioridade e Status feitas dentro do chat expandido.
+ */
+function salvarEdicaoInline() {
+    if (!ticketAbertoId) {
+        alert("Erro: Nenhum ticket identificado para atualização.");
+        return;
+    }
+
+    const lista = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
+    const index = lista.findIndex(t => t.id === ticketAbertoId);
+
+    if (index === -1) {
+        alert("Erro: Ticket não encontrado no banco de dados.");
+        return;
+    }
+
+    // Captura os novos valores dos seletores <select>
+    const novaPrioridade = document.getElementById('editPrio').value;
+    const novoStatus = document.getElementById('editStatus').value;
+
+    // Atualiza o objeto na lista
+    lista[index].prioridade = novaPrioridade;
+    lista[index].status = novoStatus;
+
+    // Persiste no localStorage
+    localStorage.setItem('tickets_gesistec', JSON.stringify(lista));
+
+    alert("Ticket #" + ticketAbertoId + " atualizado com sucesso!");
+
+    // Atualiza a tabela principal (badges) e mantém o chat aberto com os novos dados
+    carregarTickets(); 
+    
+    // Opcional: Atualiza o texto de status na barra lateral do chat sem fechar
+    const statusTitleSide = document.querySelector('.status-title-side');
+    const priorityDisplay = document.querySelector('#displayPrioridade');
+    if (statusTitleSide) statusTitleSide.innerText = novoStatus;
+    if (priorityDisplay) priorityDisplay.innerText = novaPrioridade;
+}
 /**
  * Captura o arquivo selecionado e gera um preview
  */
