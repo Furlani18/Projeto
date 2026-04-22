@@ -10,11 +10,68 @@ if(document.getElementById('saudacao')) {
     document.getElementById('saudacao').innerText = `Olá, ${usuarioAtivo.nome}!`;
 }
 
-// Variável global para gerenciar qual ticket está aberto in-line
 let ticketAbertoId = null;
+let anexoTemporario = null; 
 
-let anexoTemporario = null; // Variável para segurar o arquivo antes de enviar
+// Lógica para Criar Novo Ticket
+document.getElementById('formTicket').onsubmit = function(e) {
+    e.preventDefault();
 
+    const assunto = document.getElementById('assunto').value;
+    const tipo = document.getElementById('tipo').value;
+    const prioridade = document.getElementById('prioridade').value;
+    const descricao = document.getElementById('descricao').value;
+    const anexoInput = document.getElementById('anexoTicket');
+
+    const novoTicket = {
+        id: Math.floor(1000 + Math.random() * 9000), // Gera ID 4 dígitos
+        assunto: assunto,
+        tipo: tipo,
+        prioridade: prioridade,
+        descricao: descricao,
+        status: 'Pendente',
+        dataCriacao: new Date().toISOString(),
+        emailCliente: usuarioAtivo.email,
+        mensagens: [],
+        anexos: []
+    };
+
+    // Tratamento de anexo inicial se houver
+    if (anexoInput.files.length > 0) {
+        const file = anexoInput.files[0];
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            novoTicket.anexos.push({
+                nome: file.name,
+                tamanho: (file.size / 1024).toFixed(2) + " KB",
+                conteudo: event.target.result,
+                data: new Date().toISOString(),
+                usuario: usuarioAtivo.nome
+            });
+            finalizarCriacao(novoTicket);
+        };
+        reader.readAsDataURL(file);
+    } else {
+        finalizarCriacao(novoTicket);
+    }
+};
+
+function finalizarCriacao(ticket) {
+    let lista = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
+    lista.push(ticket);
+    localStorage.setItem('tickets_gesistec', JSON.stringify(lista));
+    
+    fecharModal();
+    carregarTickets();
+    alert("Chamado #" + ticket.id + " criado com sucesso!");
+}
+
+// Pequeno ajuste na irParaInteracao para o botão de envio
+// Dentro da função irParaInteracao, após dar o rowAtual.after(clone), adicione:
+const btnMsg = document.querySelector('.btn-reply-send');
+if(btnMsg) {
+    btnMsg.onclick = () => enviarRespostaCliente(id);
+}
 /**
  * Captura o arquivo selecionado e gera um preview
  */
@@ -27,52 +84,59 @@ function prepararAnexo(input) {
         anexoTemporario = {
             nome: file.name,
             tamanho: (file.size / 1024).toFixed(2) + " KB",
-            conteudo: e.target.result, // Base64 do arquivo
+            conteudo: e.target.result,
             data: new Date().toISOString()
         };
-        document.getElementById('file-preview-name').innerText = "📎 " + file.name;
+        const preview = document.getElementById('file-preview-name');
+        if(preview) preview.innerText = "📎 " + file.name;
     };
     reader.readAsDataURL(file);
 }
 
 /**
- * Envia a mensagem e o anexo JUNTOS
+ * Envia a mensagem e o anexo. Atualiza a interface sem fechar o chat.
  */
 function enviarRespostaCliente(ticketId) {
-    const texto = document.getElementById('reply-text').value;
+    const campoTexto = document.getElementById('reply-text');
+    const texto = campoTexto ? campoTexto.value : "";
 
     if (!texto.trim() && !anexoTemporario) {
         alert("Digite uma mensagem ou anexe um arquivo.");
         return;
     }
+    
 
     let listaTickets = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
     const index = listaTickets.findIndex(t => t.id === ticketId);
 
     if (index !== -1) {
+        // Garante que o array de mensagens existe
+        if (!listaTickets[index].mensagens) listaTickets[index].mensagens = [];
+
         const novaMensagem = {
-            autor: usuarioAtivo.nome, // Furlani ou Sidney Cerradinho
+            autor: usuarioAtivo.nome,
             perfil: "cliente",
             texto: texto,
             data: new Date().toISOString(),
-            anexo: anexoTemporario // Aqui o anexo vai junto com a mensagem
+            anexo: anexoTemporario 
         };
 
         listaTickets[index].mensagens.push(novaMensagem);
         localStorage.setItem('tickets_gesistec', JSON.stringify(listaTickets));
 
-        // Limpa tudo após enviar
-        document.getElementById('reply-text').value = "";
+        // Limpeza de campos
+        if(campoTexto) campoTexto.value = "";
         anexoTemporario = null;
-        document.getElementById('file-preview-name').innerText = "";
+        const preview = document.getElementById('file-preview-name');
+        if(preview) preview.innerText = "";
         
-        // Recarrega a interação para mostrar o novo card
-        irParaInteracao(ticketId, document.querySelector(`button[onclick*="${ticketId}"]`));
+        // Refresh inteligente: Localiza o botão na linha da tabela para re-renderizar
+        const btnRef = document.querySelector(`button[onclick*="irParaInteracao(${ticketId}"]`);
+        irParaInteracao(ticketId, btnRef, true); 
     }
 }
 
-// --- 2. Gestão do Modal de Criação ---
-
+// --- Gestão do Modal ---
 function abrirModal() {
     document.getElementById('modalTicket').style.display = 'block';
 }
@@ -82,48 +146,29 @@ function fecharModal() {
     document.getElementById('formTicket').reset();
 }
 
-// --- 3. Interação In-Line (Fluxo de Chat e Detalhes) ---
-
 /**
- * Formata a data com segurança, evitando o erro de "Invalid Date".
+ * Formata data ISO para PT-BR
  */
 function formatarDataReferencia(dataISO) {
-    // 1. Se o campo estiver vazio ou for indefinido, retorna um aviso amigável
     if (!dataISO || dataISO === "undefined") return "Data não informada";
-    
     const data = new Date(dataISO);
+    if (isNaN(data.getTime())) return dataISO; 
     
-    // 2. Verifica se o resultado da conversão é realmente uma data válida
-    if (isNaN(data.getTime())) {
-        // Se já for uma string de data (ex: 16/04/2026), retorna ela mesma
-        return dataISO; 
-    }
-    
-    // 3. Formata normalmente se estiver tudo certo
     return data.toLocaleDateString('pt-BR', {
-        weekday: 'short', 
-        day: '2-digit', 
-        month: 'short', 
-        year: 'numeric',
-        hour: '2-digit', 
-        minute: '2-digit'
-    }).replace(/\./g, '');
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
 }
 
 /**
- * Função para expandir o ticket in-line e exibir o chat profissional da GESISTEC[cite: 4, 350].
+ * Renderiza o histórico de interações in-line.
+ * @param {boolean} forcarAbertura - Se true, não fecha o ticket se ele já estiver aberto (usado no refresh).
  */
-/**
- * Versão Final e Limpa: Exibe o chat profissional sem links ou ícones desnecessários.
- */
-/**
- * Renderiza o histórico de interações dinamicamente.
- */
-function irParaInteracao(id, btn) {
+function irParaInteracao(id, btn, forcarAbertura = false) {
     const existingRow = document.querySelector('.row-interacao');
 
-    // Controle de abertura/fechamento
-    if (ticketAbertoId === id) {
+    // Se clicar no mesmo ID e não for um refresh, fecha a aba
+    if (ticketAbertoId === id && !forcarAbertura) {
         if (existingRow) existingRow.remove();
         ticketAbertoId = null;
         return;
@@ -141,68 +186,57 @@ function irParaInteracao(id, btn) {
     const template = document.getElementById('templateInteracao');
     const clone = template.content.cloneNode(true);
 
-    // Preenchimento de metadados do ticket
+    // Metadados
     clone.querySelector('#ticketIdDisplay').innerText = ticket.id;
     clone.querySelector('#descDoc').innerText = ticket.assunto;
     clone.querySelector('#solicitanteDoc').innerText = ticket.emailCliente;
     clone.querySelector('#displayPrioridade').innerText = ticket.prioridade;
     clone.querySelector('#dataCriacaoDisplay').innerText = `por ${formatarDataReferencia(ticket.dataCriacao)}`;
-    clone.querySelector('#slaDisplay').innerHTML = `<i class="far fa-clock"></i> ${calcularSLA(ticket.dataCriacao)}`;
+    
+    const slaElement = clone.querySelector('#slaDisplay');
+    if(slaElement) slaElement.innerHTML = `<i class="far fa-clock"></i> ${calcularSLA(ticket.dataCriacao)}`;
 
     const scrollArea = clone.querySelector('.content-scroll-area');
-    if (scrollArea) {
-        const mensagens = ticket.mensagens || [];
-        
-        // Gera o HTML sem nenhum texto "pronto" ou de exemplo
-        // Localize onde o chat é montado e atualize o template:
-const chatHTML = `
-    <div class="conversation-container" style="margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
-        <h5 style="margin-bottom: 20px; color: #1e293b; font-weight: 800;">Histórico de Interações</h5>
-        <div class="chat-flow">
-            ${mensagens.length > 0 ? mensagens.map(msg => `
-                <div class="interaction-card">
-                    <div class="interaction-header">
-                        <div class="user-avatar-placeholder">
-                            ${msg.autor ? msg.autor.charAt(0).toUpperCase() : 'U'}
-                        </div>
-                        <div class="interaction-meta">
-                            <strong>${msg.autor} <span class="profile-tag">${msg.perfil}</span></strong>
-                            <span>enviado em ${new Date(msg.data).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
-                    </div>
-
-                    <div class="interaction-content">
-                        ${msg.texto ? `<p style="margin: 0; font-size: 14px; line-height: 1.6; color: #334155;">${msg.texto.replace(/</g, "&lt;")}</p>` : ""}
-                    </div>
-
-                    ${msg.anexo && msg.anexo.conteudo ? `
-                        <div class="chat-attachments" style="margin-top: 12px; border-top: 1px solid #f1f5f9; padding-top: 10px;">
-                            <div class="attachment-inline-card" onclick="baixarAnexo(\`${msg.anexo.conteudo}\`, \`${msg.anexo.nome}\`)">
-                                <i class="far fa-file-alt"></i>
-                                <div class="attachment-info">
-                                    <strong style="font-size: 12px;">${msg.anexo.nome}</strong>
-                                    <span style="font-size: 11px; color: #64748b;">${msg.anexo.tamanho || '---'}</span>
-                                </div>
+    const mensagens = ticket.mensagens || [];
+    
+    const chatHTML = `
+        <div class="conversation-container" style="margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+            <h5 style="margin-bottom: 20px; color: #1e293b; font-weight: 800;">Histórico de Interações</h5>
+            <div class="chat-flow">
+                ${mensagens.length > 0 ? mensagens.map(msg => `
+                    <div class="interaction-card" style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 10px; background: #fff;">
+                        <div class="interaction-header" style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                            <div style="width: 35px; height: 35px; background: #2563eb; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                                ${msg.autor ? msg.autor.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                            <div class="interaction-meta">
+                                <strong>${msg.autor} <span class="profile-tag" style="font-size: 10px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${msg.perfil}</span></strong>
+                                <div style="font-size: 11px; color: #64748b;">${formatarDataReferencia(msg.data)}</div>
                             </div>
                         </div>
-                    ` : ""}
-                </div>
-            `).join('') : '<p style="font-size: 13px; color: #94a3b8; text-align: center;">Nenhuma interação registrada.</p>'}
+                        <div class="interaction-content">
+                            <p style="margin: 0; font-size: 14px; color: #334155;">${msg.texto.replace(/</g, "&lt;")}</p>
+                        </div>
+                        ${msg.anexo ? `
+                            <div style="margin-top: 10px; padding: 8px; background: #f8fafc; border-radius: 4px; display: inline-block; cursor: pointer;" onclick="baixarAnexo('${msg.anexo.conteudo}', '${msg.anexo.nome}')">
+                                <i class="far fa-file-alt"></i> <small>${msg.anexo.nome} (${msg.anexo.tamanho})</small>
+                            </div>
+                        ` : ""}
+                    </div>
+                `).join('') : '<p style="text-align: center; color: #94a3b8;">Nenhuma interação.</p>'}
+            </div>
         </div>
-    </div>
-`;
-        scrollArea.insertAdjacentHTML('beforeend', chatHTML);
-    }
+    `;
+    
+    if (scrollArea) scrollArea.insertAdjacentHTML('beforeend', chatHTML);
 
-    // Gerencia a tabela de anexos originais do ticket
+    // Tabela de anexos (originais)
     const tabelaAnexos = clone.querySelector('#listaAnexosDetalhada');
     const anexos = ticket.anexos || [];
-    if (clone.querySelector('#countAnexos')) clone.querySelector('#countAnexos').innerText = anexos.length;
-
     if (tabelaAnexos) {
         tabelaAnexos.innerHTML = anexos.map(a => `
             <tr>
-                <td onclick="baixarAnexo('${a.conteudo}', '${a.nome}')" style="cursor:pointer; color:#2563eb; font-weight:600;">
+                <td onclick="baixarAnexo('${a.conteudo}', '${a.nome}')" style="cursor:pointer; color:#2563eb;">
                     <i class="far fa-file-alt"></i> ${a.nome}
                 </td>
                 <td>${a.tamanho || '---'}</td>
@@ -215,20 +249,16 @@ const chatHTML = `
     rowAtual.after(clone);
 }
 
-function fecharInline(btn) {
-    const row = btn.closest('.row-interacao');
-    if (row) row.remove();
-    ticketAbertoId = null;
-}
-
-// --- 4. Lógica de Dashboard e Listagem ---
+// --- Funções de Auxílio e Dashboard ---
 
 function carregarTickets() {
     const listaGeral = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
     const meusChamados = listaGeral.filter(t => t.emailCliente === usuarioAtivo.email);
     
-    if(document.getElementById('countTotal')) document.getElementById('countTotal').innerText = meusChamados.length;
-    if(document.getElementById('countPendente')) document.getElementById('countPendente').innerText = meusChamados.filter(t => t.status === 'Pendente').length;
+    const total = document.getElementById('countTotal');
+    const pendente = document.getElementById('countPendente');
+    if(total) total.innerText = meusChamados.length;
+    if(pendente) pendente.innerText = meusChamados.filter(t => t.status === 'Pendente').length;
 
     renderizarLista(meusChamados);
 }
@@ -239,23 +269,27 @@ function renderizarLista(ticketsParaExibir) {
     tabela.innerHTML = '';
 
     if (ticketsParaExibir.length === 0) {
-        tabela.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#64748b; padding:3rem;">Nenhum chamado encontrado.</td></tr>';
+        tabela.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem;">Nenhum chamado encontrado.</td></tr>';
         return;
     }
 
     ticketsParaExibir.forEach(ticket => {
         const statusClass = ticket.status === 'Pendente' ? 'pendente' : 'finalizado';
+        const tipoClass = ticket.tipo === 'Erro' ? 'type-erro' : 
+                          ticket.tipo === 'Melhoria' ? 'type-melhoria' : 'type-duvida';
+
         tabela.innerHTML += `
             <tr>
                 <td><strong>#${ticket.id}</strong></td>
+                <td><span class="type-badge ${tipoClass}">${ticket.tipo || 'Geral'}</span></td>
                 <td>${ticket.assunto}</td>
                 <td>${ticket.prioridade}</td>
                 <td><span class="badge ${statusClass}">${ticket.status}</span></td>
                 <td>
-                    <button onclick="irParaInteracao(${ticket.id}, this)" class="btn-edit" title="Abrir Interação">
+                    <button onclick="irParaInteracao(${ticket.id}, this)" class="btn-edit">
                         <i class="fas fa-external-link-alt"></i>
                     </button>
-                    <button onclick="excluirTicket(${ticket.id})" class="btn-delete" title="Excluir">
+                    <button onclick="excluirTicket(${ticket.id})" class="btn-delete">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -264,200 +298,16 @@ function renderizarLista(ticketsParaExibir) {
     });
 }
 
-// --- 5. Persistência e Criação ---
-
-const formTicket = document.getElementById('formTicket');
-if (formTicket) {
-    formTicket.addEventListener('submit', function(e) {
-    e.preventDefault();
-
-    const ticketsExistentes = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
-    const inputFile = document.getElementById("anexoTicket");
-
-    const novoChamado = {
-        id: Math.floor(1000 + Math.random() * 9000),
-        emailCliente: usuarioAtivo.email,
-        assunto: document.getElementById('assunto').value,
-        descricao: document.getElementById('descricao').value,
-        prioridade: document.getElementById('prioridade').value,
-        status: 'Pendente',
-        anexos: [],
-        mensagens: [],
-        dataCriacao: new Date().toISOString()
-    };
-
-    // SE TEM ANEXO
-    if (inputFile && inputFile.files.length > 0) {
-        const file = inputFile.files[0];
-        const reader = new FileReader();
-
-        reader.onload = function(e) {
-            novoChamado.anexos.push({
-                nome: file.name,
-                tamanho: (file.size / 1024).toFixed(2) + " KB",
-                data: new Date().toLocaleString('pt-BR'),
-                usuario: usuarioAtivo.nome,
-                conteudo: e.target.result
-            });
-
-            salvarTicket(novoChamado, ticketsExistentes);
-        };
-
-        reader.readAsDataURL(file);
-    } else {
-        salvarTicket(novoChamado, ticketsExistentes);
-    }
-});
-
-// função auxiliar (deixa mais limpo)
-function salvarTicket(novoChamado, lista) {
-    lista.push(novoChamado);
-    localStorage.setItem('tickets_gesistec', JSON.stringify(lista));
-
-    fecharModal();
-    carregarTickets();
-}
-}
-
-function salvarEdicaoInline() {
-    if (!ticketAbertoId) return;
-
-    const lista = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
-    const index = lista.findIndex(t => t.id === ticketAbertoId);
-
-    if (index === -1) return;
-
-    // Pegar valores da tela
-    const novaPrioridade = document.getElementById('editPrio')?.value;
-    const novoStatus = document.getElementById('editStatus')?.value;
-
-    // Atualizar dados
-    if (novaPrioridade) lista[index].prioridade = novaPrioridade;
-    if (novoStatus) lista[index].status = novoStatus;
-
-    localStorage.setItem('tickets_gesistec', JSON.stringify(lista));
-
-    alert("Ticket atualizado com sucesso!");
-
-    // Atualiza tela
-    carregarTickets();
-    document.querySelector('.status-title-side').innerText = novoStatus;
-    document.querySelector('#displayPrioridade').innerText = novaPrioridade;
-}
-
-
 function calcularSLA(dataISO) {
-    if (!dataISO) return "- 0min";
-    const criacao = new Date(dataISO);
-    const agora = new Date();
-    const diffMs = agora - criacao;
-    
-    const totalMinutos = Math.floor(diffMs / (1000 * 60));
+    if (!dataISO) return "0min";
+    const diffMs = new Date() - new Date(dataISO);
+    const totalMinutos = Math.floor(diffMs / 60000);
     const totalHoras = Math.floor(totalMinutos / 60);
-    const totalDias = Math.floor(totalHoras / 24);
 
-    if (totalHoras < 1) return `- ${totalMinutos}min`;
-    if (totalDias < 1) return `- ${totalHoras}h ${totalMinutos % 60}min`;
-
-    const meses = Math.floor(totalDias / 30);
-    const semanas = Math.floor((totalDias % 30) / 7);
-    
-    return `- ${meses}mon ${semanas}w`;
+    if (totalHoras < 1) return `${totalMinutos}min`;
+    if (totalHoras < 24) return `${totalHoras}h ${totalMinutos % 60}min`;
+    return `${Math.floor(totalHoras / 24)}d ${totalHoras % 24}h`;
 }
-
-function excluirTicket(id) {
-    if (confirm("Deseja excluir este ticket?")) {
-        const lista = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
-        localStorage.setItem('tickets_gesistec', JSON.stringify(lista.filter(t => t.id !== id)));
-        carregarTickets();
-    }
-}
-
-function logout() {
-    localStorage.removeItem('sessao_ativa');
-    window.location.href = 'index.html';
-}
-function favoritarTicket() {
-    alert("Favoritado!");
-}
-
-function compartilharTicket() {
-    alert("Link copiado!");
-}
-
-function editarTicket() {
-    alert("Modo edição ativado!");
-}
-
-function focarResposta() {
-    const campo = document.getElementById("respostaInline");
-    if (campo) campo.focus();
-}
-
-function associarTicket() {
-    alert("Associar ticket!");
-}
-
-function enviarRespostaOnline() {
-    const campo = document.getElementById("respostaInline");
-    const inputFile = document.getElementById("anexoInline");
-
-    if (!campo) return;
-
-    const texto = campo.value;
-
-    // validação correta
-    if (!texto && inputFile.files.length === 0) {
-        alert("Digite uma mensagem ou adicione um anexo!");
-        return;
-}
-    const lista = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
-    const index = lista.findIndex(t => t.id === ticketAbertoId);
-
-    if (index === -1) return;
-
-    lista[index].mensagens = lista[index].mensagens || [];
-
-    const novaMensagem = {
-        texto: texto,
-        autor: usuarioAtivo.nome,
-        data: new Date().toISOString(),
-        perfil: "usuario",
-        anexo: null
-    };
-
-    // SE TEM ARQUIVO
-    if (inputFile.files.length > 0) {
-        const file = inputFile.files[0];
-        const reader = new FileReader();
-
-        reader.onload = function (e) {
-            novaMensagem.anexo = {
-                nome: file.name,
-                tamanho: (file.size / 1024).toFixed(2) + " KB",
-                conteudo: e.target.result
-            };
-
-            lista[index].mensagens.push(novaMensagem);
-            localStorage.setItem('tickets_gesistec', JSON.stringify(lista));
-
-            campo.value = "";
-            inputFile.value = "";
-
-            carregarTickets();
-        };
-
-        reader.readAsDataURL(file);
-    } else {
-        // SEM ANEXO
-        lista[index].mensagens.push(novaMensagem);
-        localStorage.setItem('tickets_gesistec', JSON.stringify(lista));
-
-        campo.value = "";
-        carregarTickets();
-    }
-}
-
 
 function baixarAnexo(base64, nome) {
     const a = document.createElement("a");
@@ -466,5 +316,19 @@ function baixarAnexo(base64, nome) {
     a.click();
 }
 
-// Inicialização
+function excluirTicket(id) {
+    if (confirm("Deseja excluir este ticket?")) {
+        let lista = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
+        lista = lista.filter(t => t.id !== id);
+        localStorage.setItem('tickets_gesistec', JSON.stringify(lista));
+        carregarTickets();
+    }
+}
+
+function logout() {
+    localStorage.removeItem('sessao_ativa');
+    window.location.href = 'index.html';
+}
+
+// Inicialização automática
 carregarTickets();
