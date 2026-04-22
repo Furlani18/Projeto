@@ -81,7 +81,7 @@
             <div id="ticketsSection" class="view-section" style="display: none;">
                 <header class="content-header">
                     <h2>Gestão de Atendimentos</h2>
-                    <p>Responda e gerencie as solicitações das usinas parceiras[cite: 93, 94].</p>
+                    <p>Gerencie as solicitações de todos os clientes.</p>
                 </header>
 
                 <div id="areaRespostaAdmin" class="reply-container-admin" style="display:none;">
@@ -89,12 +89,12 @@
                         <h4><i class="fas fa-comment-dots"></i> Respondendo Chamado #<span id="idTicketResponder"></span></h4>
                         <button onclick="fecharAreaResposta()" class="close-btn-admin">&times;</button>
                     </div>
-                    <textarea id="textoRespostaAdmin" class="reply-input-admin" placeholder="Escreva sua solução técnica aqui..."></textarea>
+                    <textarea id="textoRespostaAdmin" class="reply-input-admin" placeholder="Escreva sua solução técnica..."></textarea>
                     <div class="reply-actions-admin">
                         <div class="action-left">
                             <input type="file" id="anexoAdminInput" style="display:none" onchange="prepararAnexoAdmin(this)">
                             <button class="btn-admin-attach" onclick="document.getElementById('anexoAdminInput').click()">
-                                <i class="fas fa-paperclip"></i> Anexar Print/Documento
+                                <i class="fas fa-paperclip"></i> Anexar Print
                             </button>
                             <span id="preview-anexo-admin"></span>
                         </div>
@@ -105,22 +105,20 @@
                 </div>
 
                 <div class="card table-card">
-                    <div class="table-header">
-                        <h3>Fila de Chamados Recentes</h3>
-                    </div>
+                    <div class="table-header"><h3>Fila de Chamados Recentes</h3></div>
                     <div class="table-responsive">
                         <table class="ticket-table">
                             <thead>
                                 <tr>
                                     <th>ID</th>
+                                    <th>Cliente</th>
                                     <th>Assunto</th>
                                     <th>Prioridade</th>
                                     <th>Status</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
-                            <tbody id="ticketsByClientList">
-                                </tbody>
+                            <tbody id="ticketsByClientList"></tbody>
                         </table>
                     </div>
                 </div>
@@ -128,14 +126,30 @@
 
             <div id="usersView" class="view-section" style="display: none;">
                 <header class="content-header">
-                    <h2>Gestão de Usuários</h2>
-                    <p>Administre os acessos da equipe interna e clientes[cite: 46].</p>
+                    <div class="header-title-row">
+                        <div>
+                            <h2>Gestão de Usuários</h2>
+                            <p>Administre os acessos da equipe interna e clientes.</p>
+                        </div>
+                        <button class="btn-primary" onclick="abrirModalUsuario()">
+                            <i class="fas fa-user-plus"></i> Adicionar Novo
+                        </button>
+                    </div>
                 </header>
-                <div class="card">
-                    <div class="empty-state-card">
-                        <i class="fas fa-users-cog"></i>
-                        <p>Interface de gerenciamento em desenvolvimento para 2026[cite: 13].</p>
-                        <button class="btn-primary">Adicionar Novo</button>
+                <div class="card table-card">
+                    <div class="table-responsive">
+                        <table class="ticket-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>E-mail</th>
+                                    <th>Perfil</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaUsuarios"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -143,18 +157,57 @@
             <div id="reportsView" class="view-section" style="display: none;">
                 <header class="content-header">
                     <h2>Relatórios e BI</h2>
-                    <p>Analise o tempo médio de resposta e volumetria[cite: 275].</p>
+                    <p>Performance e volumetria do sistema.</p>
                 </header>
                 <div class="card">
                     <div class="empty-state-card">
                         <i class="fas fa-file-pdf"></i>
-                        <p>Gere relatórios customizados para as usinas fornecedoras[cite: 92].</p>
-                        <button class="btn-secondary">Exportar PDF</button>
+                        <p>Gere relatórios customizados em PDF.</p>
+                        <button class="btn-secondary">Exportar Dados</button>
                     </div>
                 </div>
             </div>
-
         </main>
+    </div>
+
+    <div id="modalUsuario" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <i class="fas fa-user-shield"></i>
+                    <h3>Cadastro de Usuário</h3>
+                </div>
+                <button class="close-btn" onclick="fecharModalUsuario()">&times;</button>
+            </div>
+            <form id="formUsuario" onsubmit="salvarUsuario(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="userName">Nome Completo <span class="required">*</span></label>
+                        <input type="text" id="userName" placeholder="Ex: João Silva" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="userEmail">E-mail de Acesso <span class="required">*</span></label>
+                        <input type="email" id="userEmail" placeholder="joao@empresa.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="userPass">Senha Inicial <span class="required">*</span></label>
+                        <input type="password" id="userPass" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="userPerfil">Perfil de Acesso</label>
+                        <select id="userPerfil">
+                            <option value="cliente">Cliente (Usina)</option>
+                            <option value="colaborador">Colaborador (Suporte)</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary-modal" onclick="fecharModalUsuario()">Cancelar</button>
+                    <button type="submit" class="btn-primary-modal">Salvar Usuário</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script src="app-admin.js"></script>
