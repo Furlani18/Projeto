@@ -1,6 +1,5 @@
 // 1. Inicialização de usuários de teste no localStorage
 function inicializarUsuarios() {
-    // Verifica se o "banco de dados" de usuários já existe
     if (!localStorage.getItem('usuarios_gesistec')) {
         const usuariosIniciais = [
             { 
@@ -16,66 +15,71 @@ function inicializarUsuarios() {
                 nome: "Usina Cerradinho" 
             }
         ];
-        // Salva os usuários iniciais como uma string JSON
         localStorage.setItem('usuarios_gesistec', JSON.stringify(usuariosIniciais));
     }
 }
 
-// Executa a inicialização assim que o script é carregado
 inicializarUsuarios();
 
-// 2. Lógica de Login Única
+// 2. Lógica de Login
 document.getElementById('loginForm').addEventListener('submit', function(event) {
     event.preventDefault();
 
     const emailInput = document.getElementById('email').value;
     const senhaInput = document.getElementById('password').value;
+    const perfilSelecionado = document.getElementById('perfilSelecionado').value; // ID corrigido
     
-    // 1. Busca a lista de usuários (ou inicia vazia)
     const usuarios = JSON.parse(localStorage.getItem('usuarios_gesistec')) || [];
     
-    // 2. Busca o usuário comparando o e-mail e ACEITANDO 'pass' ou 'senha'
-    // Isso garante que os cadastros antigos e novos funcionem juntos!
+    // Busca o usuário comparando email, senha e TAMBÉM o perfil selecionado
     const usuarioLogado = usuarios.find(u => 
-        u.email === emailInput && (u.pass === senhaInput || u.senha === senhaInput)
+        u.email === emailInput && 
+        (u.pass === senhaInput || u.senha === senhaInput) &&
+        u.perfil === perfilSelecionado
     );
 
     if (usuarioLogado) {
-        // Salva a sessão ativa com os dados encontrados
         localStorage.setItem('sessao_ativa', JSON.stringify(usuarioLogado));
+        alert(`Bem-vindo, ${usuarioLogado.nome}!`);
 
-        // 3. Redirecionamento Inteligente por Perfil
+        // Redirecionamento por Perfil
         if (usuarioLogado.perfil === "cliente") {
-            alert(`Bem-vindo, ${usuarioLogado.nome}!`);
             window.location.href = 'tickets-cliente.html'; 
-        } 
-        // Aceita tanto 'admin' quanto 'colaborador' para o dashboard administrativo
-        else if (usuarioLogado.perfil === "colaborador" || usuarioLogado.perfil === "admin") {
-            alert(`Acesso Administrativo: ${usuarioLogado.nome}`);
+        } else {
             window.location.href = 'dashboard-colaborador.html';
         }
     } else {
-        // 4. Acesso de Emergência (Hardcoded) para você não ficar trancado fora
+        // Acesso de Emergência
         if (emailInput === "admin@admin.com" && senhaInput === "123") {
-            const master = { nome: "Admin Mestre", perfil: "admin" };
+            const master = { nome: "Admin Mestre", perfil: "colaborador", email: "admin@admin.com" };
             localStorage.setItem('sessao_ativa', JSON.stringify(master));
             window.location.href = 'dashboard-colaborador.html';
             return;
         }
-        alert('E-mail ou senha incorretos!');
+        alert('E-mail, senha ou perfil incorretos!');
     }
 });
 
+// 3. Função de Alternar Perfil (Sincronizada com IDs do seu HTML)
+function selecionarPerfil(perfil) { // Mudei o nome para bater com o 'onclick' do seu HTML
+    // 1. Atualiza o valor no input oculto (ID era perfilSelecionado no HTML)
+    const inputOculto = document.getElementById('perfilSelecionado');
+    if(inputOculto) inputOculto.value = perfil;
 
-function alternarRole(perfil) {
-    // Atualiza o valor no input oculto
-    document.getElementById('role').value = perfil;
+    // 2. Atualiza as classes dos botões (IDs corrigidos para btn-cliente e btn-equipe)
+    const btnCli = document.getElementById('btn-cliente');
+    const btnEqui = document.getElementById('btn-equipe');
 
-    // Atualiza as classes dos botões
-    document.getElementById('btn-cliente').classList.toggle('active', perfil === 'cliente');
-    document.getElementById('btn-colaborador').classList.toggle('active', perfil === 'colaborador');
+    if(btnCli && btnEqui) {
+        btnCli.classList.toggle('active', perfil === 'cliente');
+        btnEqui.classList.toggle('active', perfil === 'colaborador');
+    }
 
-    // Muda o texto do botão de entrar
-    const btnSubmit = document.getElementById('btnSubmit');
-    btnSubmit.innerText = perfil === 'cliente' ? 'Entrar como Cliente' : 'Entrar como Equipe';
+    // 3. Muda o texto do botão (Buscando pela classe, já que não tem ID no seu HTML)
+    const btnSubmit = document.querySelector('.btn-login-submit');
+    if(btnSubmit) {
+        btnSubmit.innerHTML = perfil === 'cliente' ? 
+            'Entrar como Cliente <i class="fas fa-arrow-right"></i>' : 
+            'Entrar como Equipe <i class="fas fa-arrow-right"></i>';
+    }
 }
