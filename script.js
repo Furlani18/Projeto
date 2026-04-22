@@ -75,7 +75,7 @@ function selecionarPerfil(perfil) { // Mudei o nome para bater com o 'onclick' d
         btnEqui.classList.toggle('active', perfil === 'colaborador');
     }
 
-    
+
     // 3. Muda o texto do botão (Buscando pela classe, já que não tem ID no seu HTML)
     const btnSubmit = document.querySelector('.btn-login-submit');
     if(btnSubmit) {
