@@ -201,9 +201,21 @@ function formatarDataReferencia(dataISO) {
 }
 
 /**
- * Renderiza o histórico de interações in-line.
- * @param {boolean} forcarAbertura - Se true, não fecha o ticket se ele já estiver aberto (usado no refresh).
+ * Fecha a área de interação expandida (in-line) e reseta o controle global.
+ * @param {HTMLElement} btn - O botão que foi clicado.
  */
+function fecharInline(btn) {
+    // Busca o elemento pai 'tr' que tem a classe da linha de interação
+    const row = btn.closest('.row-interacao');
+    
+    if (row) {
+        row.remove(); // Remove a linha da tabela fisicamente
+    }
+
+    // Importante: Reseta o ID global para que o sistema saiba que 
+    // agora é possível abrir este ou outro ticket novamente.
+    ticketAbertoId = null;
+}
 function irParaInteracao(id, btn, forcarAbertura = false) {
     const existingRow = document.querySelector('.row-interacao');
 
