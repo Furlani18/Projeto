@@ -26,33 +26,56 @@ inicializarUsuarios();
 
 // 2. Lógica de Login Única
 document.getElementById('loginForm').addEventListener('submit', function(event) {
-    event.preventDefault(); // Impede o recarregamento da página
+    event.preventDefault();
 
     const emailInput = document.getElementById('email').value;
     const senhaInput = document.getElementById('password').value;
     
-    // Recupera a lista de usuários do localStorage
-    const usuarios = JSON.parse(localStorage.getItem('usuarios_gesistec'));
+    // 1. Busca a lista de usuários (ou inicia vazia)
+    const usuarios = JSON.parse(localStorage.getItem('usuarios_gesistec')) || [];
     
-    // Busca o usuário que coincida com e-mail E senha
-    const usuarioLogado = usuarios.find(u => u.email === emailInput && u.senha === senhaInput);
+    // 2. Busca o usuário comparando o e-mail e ACEITANDO 'pass' ou 'senha'
+    // Isso garante que os cadastros antigos e novos funcionem juntos!
+    const usuarioLogado = usuarios.find(u => 
+        u.email === emailInput && (u.pass === senhaInput || u.senha === senhaInput)
+    );
 
     if (usuarioLogado) {
-        // Salva a sessão ativa para que a próxima página saiba quem entrou
+        // Salva a sessão ativa com os dados encontrados
         localStorage.setItem('sessao_ativa', JSON.stringify(usuarioLogado));
 
-        // Redirecionamento baseado no perfil conforme Storyboard 1:
+        // 3. Redirecionamento Inteligente por Perfil
         if (usuarioLogado.perfil === "cliente") {
-            // Clientes são direcionados para a página de Tickets [cite: 317]
-            alert(`Bem-vindo, ${usuarioLogado.nome}! Direcionando para seus Tickets.`);
+            alert(`Bem-vindo, ${usuarioLogado.nome}!`);
             window.location.href = 'tickets-cliente.html'; 
-        } else if (usuarioLogado.perfil === "colaborador") {
-            // Colaboradores acessam manutenção ou atendimento de tickets [cite: 318]
+        } 
+        // Aceita tanto 'admin' quanto 'colaborador' para o dashboard administrativo
+        else if (usuarioLogado.perfil === "colaborador" || usuarioLogado.perfil === "admin") {
             alert(`Acesso Administrativo: ${usuarioLogado.nome}`);
             window.location.href = 'dashboard-colaborador.html';
         }
     } else {
-        // Feedback de erro para o usuário
-        alert('E-mail ou senha incorretos! Tente as credenciais de teste.');
+        // 4. Acesso de Emergência (Hardcoded) para você não ficar trancado fora
+        if (emailInput === "admin@admin.com" && senhaInput === "123") {
+            const master = { nome: "Admin Mestre", perfil: "admin" };
+            localStorage.setItem('sessao_ativa', JSON.stringify(master));
+            window.location.href = 'dashboard-colaborador.html';
+            return;
+        }
+        alert('E-mail ou senha incorretos!');
     }
 });
+
+
+function alternarRole(perfil) {
+    // Atualiza o valor no input oculto
+    document.getElementById('role').value = perfil;
+
+    // Atualiza as classes dos botões
+    document.getElementById('btn-cliente').classList.toggle('active', perfil === 'cliente');
+    document.getElementById('btn-colaborador').classList.toggle('active', perfil === 'colaborador');
+
+    // Muda o texto do botão de entrar
+    const btnSubmit = document.getElementById('btnSubmit');
+    btnSubmit.innerText = perfil === 'cliente' ? 'Entrar como Cliente' : 'Entrar como Equipe';
+}
