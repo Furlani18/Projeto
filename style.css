@@ -1,10 +1,15 @@
-/* Variáveis de cores */
+/* ============================================================
+   1. VARIÁVEIS E CONFIGURAÇÕES GLOBAIS
+   ============================================================ */
 :root {
-    --primary-blue: #1e40af;
-    --input-blue: #dbeafe;
+    --primary-green: #1a5c37; /* Verde GESISTEC */
+    --primary-blue: #2563eb;  /* Azul de Ação do Sistema */
+    --bg-body: #f1f5f9;
     --text-main: #1e293b;
     --text-muted: #64748b;
-    --background: #f8fafc;
+    --white: #ffffff;
+    --border-color: #e2e8f0;
+    --shadow-rich: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 * {
@@ -14,148 +19,226 @@
 }
 
 body {
-    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-    background-color: #f5f5f5;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    background-color: var(--bg-body);
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    padding: 1rem;
+    padding: 20px;
 }
 
-.login-container {
+/* ============================================================
+   2. CONTAINER PRINCIPAL (CARD)
+   ============================================================ */
+.login-page-full {
     width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-.login-wrapper {
-    width: 100%;
-    max-width: 420px;
-}
-
 .login-card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    padding: 2.5rem;
-}
-
-.login-title {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--text-main);
-    margin-bottom: 2rem;
-    text-align: center;
-}
-
-.login-form {
+    background: var(--white);
+    padding: 3rem;
+    border-radius: 24px;
+    box-shadow: var(--shadow-rich);
     width: 100%;
+    max-width: 460px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    animation: slideUp 0.5s ease-out;
 }
 
-.input-group {
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   3. BRANDING (LOGO GESISTEC)
+   ============================================================ */
+.login-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.logo-horizontal h1 {
+    color: var(--primary-green);
+    font-size: 2rem;
+    font-weight: 900;
+    letter-spacing: -1px;
+    margin: 0;
+}
+
+.logo-horizontal span {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    display: block;
+    margin-top: 2px;
+}
+
+.login-subtitle {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+/* ============================================================
+   4. SELETOR DE PERFIL (TABS)
+   ============================================================ */
+.role-selector {
+    display: flex;
+    background: #f1f5f9;
+    padding: 6px;
+    border-radius: 14px;
+    margin-bottom: 2rem;
+    gap: 8px;
+}
+
+.role-btn {
+    flex: 1;
+    border: none;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.role-btn i { font-size: 1rem; }
+
+.role-btn.active {
+    background: var(--white);
+    color: var(--primary-blue);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================================
+   5. FORMULÁRIO E INPUTS COM ÍCONES
+   ============================================================ */
+.form-group {
     margin-bottom: 1.5rem;
 }
 
-.input-group label {
+.form-group label {
     display: block;
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--text-muted);
-    margin-bottom: 0.5rem;
-}
-
-.input-group input {
-    width: 100%;
-    padding: 0.85rem 1rem;
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
-    font-size: 1rem;
+    font-size: 0.85rem;
+    font-weight: 700;
     color: var(--text-main);
-    background: white;
-    transition: all 0.2s ease;
+    margin-bottom: 8px;
 }
 
-.input-group input::placeholder {
-    color: #cbd5e1;
+/* Alinhamento do Label de Senha com o Link */
+.label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.input-group input:focus {
-    outline: none;
-    border-color: var(--primary-blue);
-    background-color: var(--input-blue);
+.forgot-link {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+    text-decoration: none;
 }
 
-.password-wrapper {
+.forgot-link:hover { text-decoration: underline; }
+
+/* Wrapper para colocar o ícone dentro do input */
+.input-wrapper {
     position: relative;
     display: flex;
     align-items: center;
 }
 
-.password-wrapper input {
-    width: 100%;
-    padding-right: 2.5rem;
-}
-
-.password-dot {
+.input-wrapper i {
     position: absolute;
-    right: 1rem;
-    color: var(--primary-blue);
-    font-size: 1.2rem;
-    display: none;
-}
-
-.input-group input:focus ~ .password-dot {
-    display: block;
-}
-
-.forgot-password-container {
-    text-align: right;
-    margin-bottom: 2rem;
-}
-
-.forgot-password {
-    color: var(--primary-blue);
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: all 0.2s ease;
-}
-
-.forgot-password:hover {
-    text-decoration: underline;
-    color: #1d3a9f;
-}
-
-.btn-entrar {
-    width: 100%;
-    padding: 0.95rem 1rem;
-    background-color: var(--primary-blue);
-    color: white;
-    border: none;
-    border-radius: 8px;
+    left: 16px;
+    color: var(--text-muted);
     font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
+    pointer-events: none;
+}
+
+.input-wrapper input {
+    width: 100%;
+    padding: 14px 14px 14px 46px; /* Padding extra na esquerda para o ícone */
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 1rem;
+    color: var(--text-main);
+    background-color: #f8fafc;
     transition: all 0.2s ease;
 }
 
-.btn-entrar:hover {
-    background-color: #1d3a9f;
+.input-wrapper input:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    background-color: var(--white);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
 }
 
-.btn-entrar:active {
-    background-color: #1a3580;
+/* ============================================================
+   6. BOTÃO DE ACESSO
+   ============================================================ */
+.btn-login-submit {
+    width: 100%;
+    padding: 16px;
+    background-color: var(--primary-blue);
+    color: var(--white);
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
 }
 
+.btn-login-submit:hover {
+    background-color: #1d4ed8;
+    transform: translateY(-2px);
+    box-shadow: 0 15px 20px -3px rgba(37, 99, 235, 0.4);
+}
+
+.btn-login-submit:active { transform: translateY(0); }
+
+/* ============================================================
+   7. FOOTER DO CARD
+   ============================================================ */
+.login-footer {
+    margin-top: 2rem;
+    text-align: center;
+    border-top: 1px solid var(--border-color);
+    padding-top: 1.5rem;
+}
+
+.login-footer p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* Responsividade para Mobile */
 @media (max-width: 480px) {
     .login-card {
-        padding: 2rem 1.5rem;
+        padding: 2rem;
+        border-radius: 0;
+        box-shadow: none;
+        border: none;
     }
-
-    .login-title {
-        font-size: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
+    body { background-color: var(--white); padding: 0; }
 }
