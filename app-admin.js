@@ -23,6 +23,9 @@ let anexoAdminTemp = null; // Memória para o arquivo antes do envio unificado
 /**
  * NAVEGAÇÃO ENTRE TELAS
  */
+/**
+ * NAVEGAÇÃO ENTRE TELAS (Atualizada)
+ */
 function navegarMenu(viewId) {
     document.querySelectorAll('.view-section').forEach(s => s.style.display = 'none');
     const target = document.getElementById(viewId);
@@ -40,7 +43,12 @@ function navegarMenu(viewId) {
     const activeMenuId = menuMap[viewId];
     if (activeMenuId) document.getElementById(activeMenuId).classList.add('active');
 
-    carregarEstatisticas();
+    // Se entrar na tela de usuários, carrega a lista
+    if (viewId === 'usersView') {
+        carregarUsuarios();
+    } else {
+        carregarEstatisticas();
+    }
 }
 
 /**
@@ -193,19 +201,36 @@ function renderizarTabelaGeral(tickets) {
     if (!tabela) return;
 
     if (tickets.length === 0) {
-        tabela.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">Nenhum chamado pendente.</td></tr>';
+        tabela.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px; color:#94a3b8;">Nenhum chamado pendente no momento.</td></tr>';
         return;
     }
 
-    tabela.innerHTML = tickets.slice().reverse().map(ticket => `
-        <tr>
-            <td><strong>#${ticket.id}</strong></td>
-            <td>${ticket.assunto}</td>
-            <td><span style="font-weight:600;">${ticket.prioridade}</span></td>
-            <td><span class="badge ${ticket.status.toLowerCase().replace(' ', '-')}">${ticket.status}</span></td>
-            <td><button class="btn-atender" onclick="abrirRespostaAdmin(${ticket.id})">Atender</button></td>
-        </tr>
-    `).join('');
+    // Atualizamos o cabeçalho no HTML se necessário, ou garantimos que o JS preencha 6 colunas
+    tabela.innerHTML = tickets.slice().reverse().map(ticket => {
+        // Lógica para definir a classe do badge
+        const statusClass = ticket.status.toLowerCase().replace(/\s+/g, '-');
+        
+        return `
+            <tr>
+                <td><span style="color: var(--admin-blue); font-weight: 800;">#${ticket.id}</span></td>
+                <td class="cliente-info">
+                    <span class="cliente-nome">${ticket.clienteNome || 'Cliente Externo'}</span>
+                </td>
+                <td>${ticket.assunto}</td>
+                <td>
+                    <span style="font-weight:600; color: ${ticket.prioridade === 'Alta' ? '#ef4444' : '#475569'};">
+                        ${ticket.prioridade}
+                    </span>
+                </td>
+                <td><span class="badge ${statusClass}">${ticket.status}</span></td>
+                <td>
+                    <button class="btn-atender" onclick="abrirRespostaAdmin(${ticket.id})">
+                        <i class="fas fa-external-link-alt"></i> Atender
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function abrirRespostaAdmin(id) {
@@ -223,6 +248,80 @@ function fecharAreaResposta() {
     document.getElementById('areaRespostaAdmin').style.display = 'none';
     anexoAdminTemp = null;
     document.getElementById('preview-anexo-admin').innerText = "";
+}
+
+/**
+ * Inicializa e renderiza a tabela de usuários
+ */
+function carregarUsuarios() {
+    const usuarios = JSON.parse(localStorage.getItem('usuarios_gesistec')) || [];
+    const tbody = document.getElementById('listaUsuarios');
+    if (!tbody) return;
+
+    if (usuarios.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#94a3b8;">Nenhum usuário cadastrado.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = usuarios.map((user, index) => `
+        <tr>
+            <td><strong>${user.nome}</strong></td>
+            <td>${user.email}</td>
+            <td><span class="profile-tag">${user.perfil}</span></td>
+            <td><span class="badge finalizado">Ativo</span></td>
+            <td>
+                <button class="btn-action-soft" onclick="deletarUsuario(${index})">
+                    <i class="far fa-trash-alt"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+/**
+ * Salva um novo usuário no LocalStorage
+ */
+function salvarUsuario(event) {
+    event.preventDefault();
+    
+    const novoUser = {
+        nome: document.getElementById('userName').value,
+        email: document.getElementById('userEmail').value,
+        pass: document.getElementById('userPass').value,
+        perfil: document.getElementById('userPerfil').value,
+        dataCriacao: new Date().toISOString()
+    };
+
+    let usuarios = JSON.parse(localStorage.getItem('usuarios_gesistec')) || [];
+    
+    // Evita duplicidade de e-mail
+    if (usuarios.some(u => u.email === novoUser.email)) {
+        alert("Este e-mail já está cadastrado!");
+        return;
+    }
+
+    usuarios.push(novoUser);
+    localStorage.setItem('usuarios_gesistec', JSON.stringify(usuarios));
+    
+    fecharModalUsuario();
+    carregarUsuarios();
+    alert("Usuário cadastrado com sucesso!");
+}
+
+// Funções de Modal
+function abrirModalUsuario() { document.getElementById('modalUsuario').style.display = 'flex'; }
+function fecharModalUsuario() { 
+    document.getElementById('modalUsuario').style.display = 'none';
+    document.getElementById('formUsuario').reset();
+}
+
+function deletarUsuario(index) {
+    if (confirm("Deseja realmente remover este acesso?")) {
+        let usuarios = JSON.parse(localStorage.getItem('usuarios_gesistec'));
+        usuarios.splice(index, 1);
+        localStorage.setItem('usuarios_gesistec', JSON.stringify(usuarios));
+        carregarUsuarios();
+    }
 }
 
 function logout() {
