@@ -1,86 +1,135 @@
-// 1. Inicialização de usuários de teste no localStorage
-function inicializarUsuarios() {
-    if (!localStorage.getItem('usuarios_gesistec')) {
-        const usuariosIniciais = [
-            { 
-                email: "colaborador@gesistec.com", 
-                senha: "123", 
-                perfil: "colaborador", 
-                nome: "Admin Gesistec" 
-            },
-            { 
-                email: "usina@cliente.com", 
-                senha: "123", 
-                perfil: "cliente", 
-                nome: "Usina Cerradinho" 
-            }
-        ];
-        localStorage.setItem('usuarios_gesistec', JSON.stringify(usuariosIniciais));
-    }
-}
+const express = require('express');
+const mysql = require('mysql2');
+const cors = require('cors');
 
-inicializarUsuarios();
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: '50mb' })); // Aumentado para suportar anexos em Base64
 
-// 2. Lógica de Login
-document.getElementById('loginForm').addEventListener('submit', function(event) {
-    event.preventDefault();
-
-    const emailInput = document.getElementById('email').value;
-    const senhaInput = document.getElementById('password').value;
-    const perfilSelecionado = document.getElementById('perfilSelecionado').value; // ID corrigido
-    
-    const usuarios = JSON.parse(localStorage.getItem('usuarios_gesistec')) || [];
-    
-    // Busca o usuário comparando email, senha e TAMBÉM o perfil selecionado
-    const usuarioLogado = usuarios.find(u => 
-        u.email === emailInput && 
-        (u.pass === senhaInput || u.senha === senhaInput) &&
-        u.perfil === perfilSelecionado
-    );
-
-    if (usuarioLogado) {
-        localStorage.setItem('sessao_ativa', JSON.stringify(usuarioLogado));
-        alert(`Bem-vindo, ${usuarioLogado.nome}!`);
-
-        // Redirecionamento por Perfil
-        if (usuarioLogado.perfil === "cliente") {
-            window.location.href = 'tickets-cliente.html'; 
-        } else {
-            window.location.href = 'dashboard-colaborador.html';
-        }
-    } else {
-        // Acesso de Emergência
-        if (emailInput === "admin@admin.com" && senhaInput === "123") {
-            const master = { nome: "Admin Mestre", perfil: "colaborador", email: "admin@admin.com" };
-            localStorage.setItem('sessao_ativa', JSON.stringify(master));
-            window.location.href = 'dashboard-colaborador.html';
-            return;
-        }
-        alert('E-mail, senha ou perfil incorretos!');
-    }
+// Configuração da Conexão com o MySQL
+const db = mysql.createPool({
+    host: 'localhost',
+    user: 'root',
+    password: '', 
+    database: 'gesistec_db',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
-// 3. Função de Alternar Perfil (Sincronizada com IDs do seu HTML)
-function selecionarPerfil(perfil) { // Mudei o nome para bater com o 'onclick' do seu HTML
-    // 1. Atualiza o valor no input oculto (ID era perfilSelecionado no HTML)
-    const inputOculto = document.getElementById('perfilSelecionado');
-    if(inputOculto) inputOculto.value = perfil;
+// ==========================================
+// 1. ROTAS DE USUÁRIO & LOGIN
+// ==========================================
 
-    // 2. Atualiza as classes dos botões (IDs corrigidos para btn-cliente e btn-equipe)
-    const btnCli = document.getElementById('btn-cliente');
-    const btnEqui = document.getElementById('btn-equipe');
+// Login
+app.post('/api/login', (req, res) => {
+    const { email, senha, perfil } = req.body;
+    const sql = "SELECT id, nome, email, perfil FROM usuarios WHERE email = ? AND senha = ? AND perfil = ?";
+    db.query(sql, [email, senha, perfil], (err, results) => {
+        if (err) return res.status(500).json(err);
+        if (results.length > 0) res.json(results[0]);
+        else res.status(401).json({ message: "Credenciais inválidas!" });
+    });
+});
 
-    if(btnCli && btnEqui) {
-        btnCli.classList.toggle('active', perfil === 'cliente');
-        btnEqui.classList.toggle('active', perfil === 'colaborador');
+// Listar todos os usuários (Painel Admin)
+app.get('/api/usuarios', (req, res) => {
+    db.query("SELECT id, nome, email, perfil, data_criacao FROM usuarios", (err, data) => {
+        if (err) return res.status(500).json(err);
+        res.json(data);
+    });
+});
+
+// Criar novo usuário (Painel Admin)
+app.post('/api/usuarios', (req, res) => {
+    const { nome, email, senha, perfil } = req.body;
+    const sql = "INSERT INTO usuarios (nome, email, senha, perfil) VALUES (?, ?, ?, ?)";
+    db.query(sql, [nome, email, senha, perfil], (err, result) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: "Usuário criado!", id: result.insertId });
+    });
+});
+
+// Deletar usuário
+app.delete('/api/usuarios/:id', (req, res) => {
+    db.query("DELETE FROM usuarios WHERE id = ?", [req.params.id], (err) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: "Usuário removido!" });
+    });
+});
+
+// ==========================================
+// 2. ROTAS DE TICKETS (CHAMADOS)
+// ==========================================
+
+// Criar Ticket
+app.post('/api/tickets', (req, res) => {
+    const { assunto, tipo, prioridade, descricao, clienteNome, emailCliente } = req.body;
+    const sql = "INSERT INTO tickets (assunto, tipo, prioridade, descricao, cliente_nome, email_cliente) VALUES (?, ?, ?, ?, ?, ?)";
+    db.query(sql, [assunto, tipo, prioridade, descricao, clienteNome, emailCliente], (err, result) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: "Ticket criado!", id: result.insertId });
+    });
+});
+
+// Listar Tickets (Filtra por e-mail se for cliente)
+app.get('/api/tickets', (req, res) => {
+    const email = req.query.email;
+    let sql = "SELECT * FROM tickets ORDER BY id DESC";
+    let params = [];
+
+    if (email) {
+        sql = "SELECT * FROM tickets WHERE email_cliente = ? ORDER BY id DESC";
+        params = [email];
     }
 
+    db.query(sql, params, (err, data) => {
+        if (err) return res.status(500).json(err);
+        res.json(data);
+    });
+});
 
-    // 3. Muda o texto do botão (Buscando pela classe, já que não tem ID no seu HTML)
-    const btnSubmit = document.querySelector('.btn-login-submit');
-    if(btnSubmit) {
-        btnSubmit.innerHTML = perfil === 'cliente' ? 
-            'Entrar como Cliente <i class="fas fa-arrow-right"></i>' : 
-            'Entrar como Equipe <i class="fas fa-arrow-right"></i>';
-    }
-}
+// Atualizar Status/Prioridade (Ação do Admin/Colaborador)
+app.patch('/api/tickets/:id', (req, res) => {
+    const { status, prioridade } = req.body;
+    const sql = "UPDATE tickets SET status = ?, prioridade = ? WHERE id = ?";
+    db.query(sql, [status, prioridade, req.params.id], (err) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: "Ticket atualizado!" });
+    });
+});
+
+// ==========================================
+// 3. ROTAS DE MENSAGENS (INTERAÇÕES)
+// ==========================================
+
+// Adicionar Mensagem ao Histórico
+app.post('/api/mensagens', (req, res) => {
+    const { ticket_id, autor, perfil, texto, anexo_nome, anexo_conteudo } = req.body;
+    const sql = "INSERT INTO mensagens (ticket_id, autor, perfil, texto, anexo_nome, anexo_conteudo) VALUES (?, ?, ?, ?, ?, ?)";
+    
+    db.query(sql, [ticket_id, autor, perfil, texto, anexo_nome, anexo_conteudo], (err, result) => {
+        if (err) return res.status(500).json(err);
+        
+        // Quando uma resposta é enviada, atualizamos o status do ticket automaticamente
+        const novoStatus = perfil === 'suporte' ? 'Em Atendimento' : 'Pendente';
+        db.query("UPDATE tickets SET status = ? WHERE id = ?", [novoStatus, ticket_id]);
+        
+        res.json({ message: "Mensagem enviada!", id: result.insertId });
+    });
+});
+
+// Buscar histórico de mensagens de um ticket
+app.get('/api/mensagens/:ticketId', (req, res) => {
+    const sql = "SELECT * FROM mensagens WHERE ticket_id = ? ORDER BY data_envio ASC";
+    db.query(sql, [req.params.ticketId], (err, data) => {
+        if (err) return res.status(500).json(err);
+        res.json(data);
+    });
+});
+
+// Iniciar o servidor
+const PORT = 3000;
+app.listen(PORT, () => {
+    console.log(`🚀 Servidor GESISTEC rodando em http://localhost:${PORT}`);
+});
