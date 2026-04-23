@@ -84,6 +84,8 @@ function enviarRespostaAdmin() {
         alert("Por favor, digite uma mensagem ou anexe um arquivo.");
         return;
     }
+    listaTickets[index].status = "Em Atendimento";
+    localStorage.setItem('tickets_gesistec', JSON.stringify(listaTickets));
 
     let listaTickets = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
     const index = listaTickets.findIndex(t => t.id == idTicket);
@@ -200,21 +202,16 @@ function renderizarTabelaGeral(tickets) {
     const tabela = document.getElementById('ticketsByClientList');
     if (!tabela) return;
 
-    if (tickets.length === 0) {
-        tabela.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px; color:#94a3b8;">Nenhum chamado pendente no momento.</td></tr>';
-        return;
-    }
-
-    // Atualizamos o cabeçalho no HTML se necessário, ou garantimos que o JS preencha 6 colunas
     tabela.innerHTML = tickets.slice().reverse().map(ticket => {
-        // Lógica para definir a classe do badge
         const statusClass = ticket.status.toLowerCase().replace(/\s+/g, '-');
         
         return `
             <tr>
-                <td><span style="color: var(--admin-blue); font-weight: 800;">#${ticket.id}</span></td>
+                <td><span style="color: #2563eb; font-weight: 800;">#${ticket.id}</span></td>
                 <td class="cliente-info">
-                    <span class="cliente-nome">${ticket.clienteNome || 'Cliente Externo'}</span>
+                    <span class="cliente-nome" style="font-weight: 700;">
+                        ${ticket.clienteNome || 'Cliente Externo'} 
+                    </span>
                 </td>
                 <td>${ticket.assunto}</td>
                 <td>
@@ -235,11 +232,23 @@ function renderizarTabelaGeral(tickets) {
 
 function abrirRespostaAdmin(id) {
     const area = document.getElementById('areaRespostaAdmin');
-    const display = document.getElementById('idTicketResponder');
-    if (area && display) {
+    const tickets = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
+    const ticket = tickets.find(t => t.id == id);
+
+    if (ticket) {
+        document.getElementById('idTicketResponder').innerText = id;
         area.style.display = 'block';
-        display.innerText = id;
-        document.getElementById('textoRespostaAdmin').focus();
+
+        // Inserir um pequeno histórico acima da resposta para o Admin se localizar
+        const historicoRapido = ticket.mensagens.slice(-2).map(m => `
+            <div style="font-size: 12px; padding: 5px; border-bottom: 1px solid #eee;">
+                <strong>${m.autor}:</strong> ${m.texto.substring(0, 50)}...
+            </div>
+        `).join('');
+        
+        // Se quiser exibir a descrição original:
+        area.insertAdjacentHTML('afterbegin', `<div id="contextoAdmin" style="background: #f8fafc; padding: 10px; margin-bottom: 10px; border-radius: 5px; font-size: 13px;"><strong>Problema:</strong> ${ticket.descricao}</div>`);
+        
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 }
