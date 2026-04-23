@@ -32,6 +32,7 @@ document.getElementById('formTicket').onsubmit = function(e) {
         status: 'Pendente',
         dataCriacao: new Date().toISOString(),
         emailCliente: usuarioAtivo.email,
+        clienteNome: usuarioAtivo.nome,
         mensagens: [],
         anexos: []
     };
@@ -255,27 +256,22 @@ function irParaInteracao(id, btn, forcarAbertura = false) {
         <div class="conversation-container" style="margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
             <h5 style="margin-bottom: 20px; color: #1e293b; font-weight: 800;">Histórico de Interações</h5>
             <div class="chat-flow">
-                ${mensagens.length > 0 ? mensagens.map(msg => `
-                    <div class="interaction-card" style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 10px; background: #fff;">
-                        <div class="interaction-header" style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                            <div style="width: 35px; height: 35px; background: #2563eb; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">
-                                ${msg.autor ? msg.autor.charAt(0).toUpperCase() : 'U'}
-                            </div>
-                            <div class="interaction-meta">
-                                <strong>${msg.autor} <span class="profile-tag" style="font-size: 10px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${msg.perfil}</span></strong>
-                                <div style="font-size: 11px; color: #64748b;">${formatarDataReferencia(msg.data)}</div>
-                            </div>
-                        </div>
-                        <div class="interaction-content">
-                            <p style="margin: 0; font-size: 14px; color: #334155;">${msg.texto.replace(/</g, "&lt;")}</p>
-                        </div>
-                        ${msg.anexo ? `
-                            <div style="margin-top: 10px; padding: 8px; background: #f8fafc; border-radius: 4px; display: inline-block; cursor: pointer;" onclick="baixarAnexo('${msg.anexo.conteudo}', '${msg.anexo.nome}')">
-                                <i class="far fa-file-alt"></i> <small>${msg.anexo.nome} (${msg.anexo.tamanho})</small>
-                            </div>
-                        ` : ""}
-                    </div>
-                `).join('') : '<p style="text-align: center; color: #94a3b8;">Nenhuma interação.</p>'}
+                ${mensagens.map(msg => `
+    <div class="interaction-card" style="border-left: 5px solid ${msg.perfil === 'suporte' ? '#10b981' : '#2563eb'}; margin-bottom: 15px;">
+        <div class="interaction-header">
+            <strong>${msg.autor} 
+                <span class="profile-tag" style="background: ${msg.perfil === 'suporte' ? '#dcfce7' : '#dbeafe'}">
+                    ${msg.perfil === 'suporte' ? 'Suporte GESISTEC' : 'Cliente'}
+                </span>
+            </strong>
+            <span style="font-size: 11px;">${new Date(msg.data).toLocaleString()}</span>
+        </div>
+        <div class="interaction-content">
+            <p>${msg.texto}</p>
+        </div>
+        ${msg.anexo ? `<button onclick="baixarAnexo('${msg.anexo.conteudo}', '${msg.anexo.nome}')" class="btn-link">📎 ${msg.anexo.nome}</button>` : ''}
+    </div>
+`).join('')} : '<p style="text-align: center; color: #94a3b8;">Nenhuma interação.</p>'}
             </div>
         </div>
     `;
