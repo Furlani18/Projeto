@@ -80,18 +80,17 @@ function enviarRespostaAdmin() {
     const idTicket = document.getElementById('idTicketResponder').innerText;
     const respostaTexto = campoTexto.value;
 
+    // 1. Validação básica
     if (!respostaTexto.trim() && !anexoAdminTemp) {
         alert("Por favor, digite uma mensagem ou anexe um arquivo.");
         return;
     }
-    listaTickets[index].status = "Em Atendimento";
-    localStorage.setItem('tickets_gesistec', JSON.stringify(listaTickets));
 
+    // 2. Busca os dados DEPOIS da validação
     let listaTickets = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
     const index = listaTickets.findIndex(t => t.id == idTicket);
 
     if (index !== -1) {
-        // Inicializa array de mensagens se não existir
         if (!listaTickets[index].mensagens) listaTickets[index].mensagens = [];
 
         const novaMensagem = {
@@ -99,18 +98,21 @@ function enviarRespostaAdmin() {
             perfil: "suporte",
             texto: respostaTexto,
             data: new Date().toISOString(),
-            anexo: anexoAdminTemp // Envia o objeto de anexo junto com o texto
+            anexo: anexoAdminTemp
         };
 
+        // 3. Atualiza o objeto e o status
         listaTickets[index].mensagens.push(novaMensagem);
         listaTickets[index].status = "Em Atendimento"; 
         
         localStorage.setItem('tickets_gesistec', JSON.stringify(listaTickets));
 
-        // Limpeza de Interface
+        // 4. Limpeza de Interface
         campoTexto.value = "";
         anexoAdminTemp = null;
-        document.getElementById('preview-anexo-admin').innerText = "";
+        const preview = document.getElementById('preview-anexo-admin');
+        if (preview) preview.innerText = "";
+        
         document.getElementById('areaRespostaAdmin').style.display = 'none';
         
         alert("Resposta enviada com sucesso!");
@@ -232,23 +234,29 @@ function renderizarTabelaGeral(tickets) {
 
 function abrirRespostaAdmin(id) {
     const area = document.getElementById('areaRespostaAdmin');
+    const display = document.getElementById('idTicketResponder');
     const tickets = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
     const ticket = tickets.find(t => t.id == id);
 
-    if (ticket) {
-        document.getElementById('idTicketResponder').innerText = id;
+    if (ticket && area && display) {
+        display.innerText = id;
         area.style.display = 'block';
 
-        // Inserir um pequeno histórico acima da resposta para o Admin se localizar
-        const historicoRapido = ticket.mensagens.slice(-2).map(m => `
-            <div style="font-size: 12px; padding: 5px; border-bottom: 1px solid #eee;">
-                <strong>${m.autor}:</strong> ${m.texto.substring(0, 50)}...
+        // Remove contexto anterior se existir para não duplicar na tela
+        const contextoAntigo = document.getElementById('contextoAdmin');
+        if (contextoAntigo) contextoAntigo.remove();
+
+        // Insere a descrição do problema atual
+        const htmlContexto = `
+            <div id="contextoAdmin" style="background: #f1f5f9; padding: 12px; margin-bottom: 15px; border-radius: 6px; border-left: 4px solid #2563eb;">
+                <strong style="display:block; margin-bottom:4px; color:#1e293b; font-size:12px;">DESCRIÇÃO DO CLIENTE:</strong>
+                <p style="margin:0; font-size:13px; color:#475569;">${ticket.descricao || 'Sem descrição detalhada.'}</p>
             </div>
-        `).join('');
+        `;
         
-        // Se quiser exibir a descrição original:
-        area.insertAdjacentHTML('afterbegin', `<div id="contextoAdmin" style="background: #f8fafc; padding: 10px; margin-bottom: 10px; border-radius: 5px; font-size: 13px;"><strong>Problema:</strong> ${ticket.descricao}</div>`);
+        area.insertAdjacentHTML('afterbegin', htmlContexto);
         
+        document.getElementById('textoRespostaAdmin').focus();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 }
@@ -323,6 +331,21 @@ function fecharModalUsuario() {
     document.getElementById('modalUsuario').style.display = 'none';
     document.getElementById('formUsuario').reset();
 }
+
+/**
+ * SINCRONIZAÇÃO DO DASHBOARD:
+ * Atualiza métricas e fila de atendimento se um cliente enviar algo.
+ */
+window.addEventListener('storage', (event) => {
+    if (event.key === 'tickets_gesistec' && event.newValue) {
+        console.log("Sincronizando Dashboard Admin...");
+        carregarEstatisticas(); 
+        
+        if (document.getElementById('ticketsSection').style.display !== 'none') {
+            renderizarTabelaGeral(JSON.parse(event.newValue));
+        }
+    }
+});
 
 function deletarUsuario(index) {
     if (confirm("Deseja realmente remover este acesso?")) {
