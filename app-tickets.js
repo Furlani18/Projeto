@@ -57,21 +57,46 @@ document.getElementById('formTicket').onsubmit = function(e) {
     }
 };
 
-function finalizarCriacao(ticket) {
-    let lista = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
-    lista.push(ticket);
-    localStorage.setItem('tickets_gesistec', JSON.stringify(lista));
-    
-    fecharModal();
-    carregarTickets();
-    alert("Chamado #" + ticket.id + " criado com sucesso!");
+/**
+ * Versão atualizada para MySQL: 
+ * Envia os dados para o Node.js em vez do localStorage.
+ */
+async function finalizarCriacao(ticket) {
+    try {
+        // 1. Fazemos a chamada para o seu servidor Node.js na porta 3000
+        const response = await fetch('http://localhost:3000/api/tickets', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(ticket) // Transforma o objeto em texto JSON
+        });
+
+        if (response.ok) {
+            // 2. Se o servidor gravou com sucesso, seguimos o fluxo da interface
+            fecharModal();
+            
+            // Importante: Sua função carregarTickets agora também deve buscar do banco!
+            carregarTickets(); 
+            
+            alert("Chamado #" + ticket.id + " criado com sucesso no MySQL!");
+        } else {
+            const erro = await response.json();
+            alert("Erro do servidor: " + erro.message);
+        }
+
+    } catch (error) {
+        // Caso o seu arquivo server.js não esteja rodando (node server.js)
+        console.error("Erro ao conectar com o MySQL:", error);
+        alert("O servidor Node.js está desligado ou houve um erro de conexão.");
+    }
 }
 
-// Pequeno ajuste na irParaInteracao para o botão de envio
-// Dentro da função irParaInteracao, após dar o rowAtual.after(clone), adicione:
+// Lógica de atribuição do botão de resposta (dentro da irParaInteracao)
 const btnMsg = document.querySelector('.btn-reply-send');
 if(btnMsg) {
-    btnMsg.onclick = () => enviarRespostaCliente(id);
+    // Garantimos que o 'id' passado seja o id do ticket aberto no banco
+    btnMsg.onclick = () => enviarRespostaCliente(ticket.id); 
 }
 
 /**
@@ -252,39 +277,41 @@ function irParaInteracao(id, btn, forcarAbertura = false) {
     const scrollArea = clone.querySelector('.content-scroll-area');
     const mensagens = ticket.mensagens || [];
     
+    // 1. Corrigindo a lógica das mensagens dentro da variável
     const chatHTML = `
         <div class="conversation-container" style="margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
             <h5 style="margin-bottom: 20px; color: #1e293b; font-weight: 800;">Histórico de Interações</h5>
             <div class="chat-flow">
-                ${mensagens.map(msg => `
-    <div class="interaction-card" style="border-left: 5px solid ${msg.perfil === 'suporte' ? '#10b981' : '#2563eb'}; margin-bottom: 15px;">
-        <div class="interaction-header">
-            <strong>${msg.autor} 
-                <span class="profile-tag" style="background: ${msg.perfil === 'suporte' ? '#dcfce7' : '#dbeafe'}">
-                    ${msg.perfil === 'suporte' ? 'Suporte GESISTEC' : 'Cliente'}
-                </span>
-            </strong>
-            <span style="font-size: 11px;">${new Date(msg.data).toLocaleString()}</span>
-        </div>
-        <div class="interaction-content">
-            <p>${msg.texto}</p>
-        </div>
-        ${msg.anexo ? `<button onclick="baixarAnexo('${msg.anexo.conteudo}', '${msg.anexo.nome}')" class="btn-link">📎 ${msg.anexo.nome}</button>` : ''}
-    </div>
-`).join('')} : '<p style="text-align: center; color: #94a3b8;">Nenhuma interação.</p>'}
+                ${mensagens.length > 0 ? mensagens.map(msg => `
+                    <div class="interaction-card" style="border-left: 5px solid ${msg.perfil === 'suporte' ? '#10b981' : '#2563eb'}; margin-bottom: 15px; padding: 12px; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <div class="interaction-header" style="margin-bottom: 8px; display: flex; justify-content: space-between;">
+                            <strong>${msg.autor} 
+                                <span class="profile-tag" style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: ${msg.perfil === 'suporte' ? '#dcfce7' : '#dbeafe'}">
+                                    ${msg.perfil === 'suporte' ? 'Suporte GESISTEC' : 'Cliente'}
+                                </span>
+                            </strong>
+                            <span style="font-size: 11px; color: #64748b;">${new Date(msg.data).toLocaleString()}</span>
+                        </div>
+                        <div class="interaction-content">
+                            <p style="margin: 0; font-size: 14px; color: #334155;">${msg.texto}</p>
+                        </div>
+                        ${msg.anexo ? `<button onclick="baixarAnexo('${msg.anexo.conteudo}', '${msg.anexo.nome}')" class="btn-link" style="margin-top: 8px; border: none; background: none; color: #2563eb; cursor: pointer; font-size: 12px;">📎 ${msg.anexo.nome}</button>` : ''}
+                    </div>
+                `).join('') : '<p style="text-align: center; color: #94a3b8; font-size: 13px;">Nenhuma interação registrada.</p>'}
             </div>
         </div>
     `;
     
+    // 2. Inserindo o chat na área de scroll
     if (scrollArea) scrollArea.insertAdjacentHTML('beforeend', chatHTML);
 
-    // Tabela de anexos (originais)
+    // 3. Tabela de anexos (originais)
     const tabelaAnexos = clone.querySelector('#listaAnexosDetalhada');
     const anexos = ticket.anexos || [];
     if (tabelaAnexos) {
         tabelaAnexos.innerHTML = anexos.map(a => `
             <tr>
-                <td onclick="baixarAnexo('${a.conteudo}', '${a.nome}')" style="cursor:pointer; color:#2563eb;">
+                <td onclick="baixarAnexo('${a.conteudo}', '${a.nome}')" style="cursor:pointer; color:#2563eb; font-weight:600;">
                     <i class="far fa-file-alt"></i> ${a.nome}
                 </td>
                 <td>${a.tamanho || '---'}</td>
@@ -372,6 +399,29 @@ function excluirTicket(id) {
         carregarTickets();
     }
 }
+
+
+/**
+ * ESCUTA EM TEMPO REAL:
+ * Atualiza a tela do cliente se o Admin fizer alterações em outra aba.
+ */
+window.addEventListener('storage', (event) => {
+    if (event.key === 'tickets_gesistec') {
+        console.log("Detectada atualização nos tickets...");
+        
+        // 1. Atualiza a tabela principal (badges e status)
+        carregarTickets();
+
+        // 2. Se o usuário estiver com um chat aberto, recarrega o conteúdo dele
+        if (ticketAbertoId) {
+            const btnRef = document.querySelector(`button[onclick*="irParaInteracao(${ticketAbertoId}"]`);
+            if (btnRef) {
+                // Passamos 'true' para não fechar o ticket, apenas atualizar o conteúdo
+                irParaInteracao(ticketAbertoId, btnRef, true);
+            }
+        }
+    }
+});
 
 function logout() {
     localStorage.removeItem('sessao_ativa');
