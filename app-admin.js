@@ -270,59 +270,68 @@ function fecharAreaResposta() {
 /**
  * Inicializa e renderiza a tabela de usuários
  */
-function carregarUsuarios() {
-    const usuarios = JSON.parse(localStorage.getItem('usuarios_gesistec')) || [];
+async function carregarUsuarios() {
     const tbody = document.getElementById('listaUsuarios');
     if (!tbody) return;
 
-    if (usuarios.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#94a3b8;">Nenhum usuário cadastrado.</td></tr>';
-        return;
-    }
+    try {
+        const response = await fetch('http://localhost:3000/api/usuarios');
+        const usuarios = await response.json();
 
-    tbody.innerHTML = usuarios.map((user, index) => `
-        <tr>
-            <td><strong>${user.nome}</strong></td>
-            <td>${user.email}</td>
-            <td><span class="profile-tag">${user.perfil}</span></td>
-            <td><span class="badge finalizado">Ativo</span></td>
-            <td>
-                <button class="btn-action-soft" onclick="deletarUsuario(${index})">
-                    <i class="far fa-trash-alt"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
+        if (usuarios.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px;">Nenhum usuário no banco.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = usuarios.map(user => `
+            <tr>
+                <td><strong>${user.nome}</strong></td>
+                <td>${user.email}</td>
+                <td><span class="profile-tag">${user.perfil}</span></td>
+                <td><span class="badge finalizado">${user.status_tipo === 'A' ? 'Ativo' : 'Pendente'}</span></td>
+                <td>
+                    <button class="btn-action-soft" onclick="deletarUsuario(${user.id}, '${user.perfil}')">
+                        <i class="far fa-trash-alt"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        console.error("Erro ao carregar usuários:", error);
+    }
 }
 
 /**
  * Salva um novo usuário no LocalStorage
  */
-function salvarUsuario(event) {
+async function salvarUsuario(event) {
     event.preventDefault();
     
     const novoUser = {
         nome: document.getElementById('userName').value,
         email: document.getElementById('userEmail').value,
-        pass: document.getElementById('userPass').value,
-        perfil: document.getElementById('userPerfil').value,
-        dataCriacao: new Date().toISOString()
+        senha: document.getElementById('userPass').value,
+        perfil: document.getElementById('userPerfil').value // 'admin', 'colaborador' ou 'cliente'
     };
 
-    let usuarios = JSON.parse(localStorage.getItem('usuarios_gesistec')) || [];
-    
-    // Evita duplicidade de e-mail
-    if (usuarios.some(u => u.email === novoUser.email)) {
-        alert("Este e-mail já está cadastrado!");
-        return;
-    }
+    try {
+        const response = await fetch('http://localhost:3000/api/usuarios', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(novoUser)
+        });
 
-    usuarios.push(novoUser);
-    localStorage.setItem('usuarios_gesistec', JSON.stringify(usuarios));
-    
-    fecharModalUsuario();
-    carregarUsuarios();
-    alert("Usuário cadastrado com sucesso!");
+        if (response.ok) {
+            alert("Usuário cadastrado com sucesso no MySQL!");
+            fecharModalUsuario();
+            carregarUsuarios(); // Recarrega a tabela na hora
+        } else {
+            const erro = await response.json();
+            alert("Erro: " + erro.error);
+        }
+    } catch (error) {
+        alert("Erro ao conectar com o servidor.");
+    }
 }
 
 // Funções de Modal
@@ -347,12 +356,22 @@ window.addEventListener('storage', (event) => {
     }
 });
 
-function deletarUsuario(index) {
-    if (confirm("Deseja realmente remover este acesso?")) {
-        let usuarios = JSON.parse(localStorage.getItem('usuarios_gesistec'));
-        usuarios.splice(index, 1);
-        localStorage.setItem('usuarios_gesistec', JSON.stringify(usuarios));
-        carregarUsuarios();
+async function deletarUsuario(id, perfil) {
+    if (confirm(`Deseja realmente remover este ${perfil}?`)) {
+        try {
+            const response = await fetch(`http://localhost:3000/api/usuarios/${id}?perfil=${perfil}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                alert("Usuário removido com sucesso!");
+                carregarUsuarios(); // Recarrega a tabela
+            } else {
+                alert("Erro ao remover usuário.");
+            }
+        } catch (error) {
+            console.error("Erro na conexão:", error);
+        }
     }
 }
 
