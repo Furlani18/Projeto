@@ -57,46 +57,38 @@ document.getElementById('formTicket').onsubmit = function(e) {
     }
 };
 
-/**
- * Versão atualizada para MySQL: 
- * Envia os dados para o Node.js em vez do localStorage.
- */
 async function finalizarCriacao(ticket) {
+    // 1. Tradução: O banco espera NRO_TIPO (Inteiro) e o front manda texto
+    const mapaTipos = { 'Erro': 1, 'Melhoria': 2, 'Dúvida': 3 };
+    
+    // 2. Montamos o pacote exatamente como o server.js espera (req.body)
+    const dadosParaEnviar = {
+        assunto: ticket.assunto,
+        prioridade: ticket.prioridade,
+        login: ticket.emailCliente, // O server.js espera 'login' para DES_LOGIN
+        tipo_id: mapaTipos[ticket.tipo] || 1, // Converte texto para ID numérico
+        anexo: ticket.anexos.length > 0 ? ticket.anexos[0].conteudo : null
+    };
+
     try {
-        // 1. Fazemos a chamada para o seu servidor Node.js na porta 3000
         const response = await fetch('http://localhost:3000/api/tickets', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(ticket) // Transforma o objeto em texto JSON
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dadosParaEnviar) 
         });
 
         if (response.ok) {
-            // 2. Se o servidor gravou com sucesso, seguimos o fluxo da interface
             fecharModal();
-            
-            // Importante: Sua função carregarTickets agora também deve buscar do banco!
-            carregarTickets(); 
-            
-            alert("Chamado #" + ticket.id + " criado com sucesso no MySQL!");
+            alert("Chamado aberto com sucesso no MySQL!");
+            // carregarTickets(); // Implementaremos a busca do banco abaixo
         } else {
             const erro = await response.json();
-            alert("Erro do servidor: " + erro.message);
+            // Agora o alert vai mostrar o erro real do MySQL (ex: coluna faltando)
+            alert("Erro no Banco: " + (erro.error || erro.message));
         }
-
     } catch (error) {
-        // Caso o seu arquivo server.js não esteja rodando (node server.js)
-        console.error("Erro ao conectar com o MySQL:", error);
-        alert("O servidor Node.js está desligado ou houve um erro de conexão.");
+        alert("Servidor Node.js desligado.");
     }
-}
-
-// Lógica de atribuição do botão de resposta (dentro da irParaInteracao)
-const btnMsg = document.querySelector('.btn-reply-send');
-if(btnMsg) {
-    // Garantimos que o 'id' passado seja o id do ticket aberto no banco
-    btnMsg.onclick = () => enviarRespostaCliente(ticket.id); 
 }
 
 /**
@@ -326,16 +318,34 @@ function irParaInteracao(id, btn, forcarAbertura = false) {
 
 // --- Funções de Auxílio e Dashboard ---
 
-function carregarTickets() {
-    const listaGeral = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
-    const meusChamados = listaGeral.filter(t => t.emailCliente === usuarioAtivo.email);
-    
-    const total = document.getElementById('countTotal');
-    const pendente = document.getElementById('countPendente');
-    if(total) total.innerText = meusChamados.length;
-    if(pendente) pendente.innerText = meusChamados.filter(t => t.status === 'Pendente').length;
+async function carregarTickets() {
+    try {
+        const response = await fetch(`http://localhost:3000/api/tickets?login=${usuarioAtivo.email}`);
+        const chamadosDoBanco = await response.json();
 
-    renderizarLista(meusChamados);
+        // Verificação de segurança: se não for um Array, deu erro no servidor
+        if (!Array.isArray(chamadosDoBanco)) {
+            console.error("Servidor retornou erro:", chamadosDoBanco);
+            return;
+        }
+
+        const meusChamados = chamadosDoBanco.map(ticket => {
+            // ... sua lógica de tradução (prioTraduzida, statusTraduzido, etc) ...
+            return {
+                id: ticket.id,
+                assunto: ticket.assunto,
+                tipo: ticket.nro_tipo === 1 ? 'Erro' : (ticket.nro_tipo === 2 ? 'Melhoria' : 'Dúvida'),
+                prioridade: ticket.prioridade === 'A' ? 'Alta' : (ticket.prioridade === 'M' ? 'Média' : 'Baixa'),
+                status: ticket.status === 'A' ? 'Pendente' : 'Finalizado',
+                dataCriacao: ticket.data,
+                emailCliente: ticket.usuario
+            };
+        });
+
+        renderizarLista(meusChamados);
+    } catch (error) {
+        console.error("Erro na conexão:", error);
+    }
 }
 
 function renderizarLista(ticketsParaExibir) {
