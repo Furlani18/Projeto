@@ -133,64 +133,71 @@ function salvarEdicaoInline() {
 /**
  * Captura o arquivo selecionado e gera um preview
  */
+/**
+ * Captura o arquivo selecionado e o prepara para envio junto com a resposta.
+ */
 function prepararAnexo(input) {
     const file = input.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = function(e) {
+        // Armazena os dados do anexo na variável global temporária
         anexoTemporario = {
             nome: file.name,
-            tamanho: (file.size / 1024).toFixed(2) + " KB",
-            conteudo: e.target.result,
-            data: new Date().toISOString()
+            conteudo: e.target.result // Base64 para gravação no banco
         };
+        // Atualiza o nome do arquivo no preview ao lado do botão
         const preview = document.getElementById('file-preview-name');
-        if(preview) preview.innerText = "📎 " + file.name;
+        if (preview) preview.innerText = "📎 " + file.name;
     };
     reader.readAsDataURL(file);
 }
 
 /**
- * Envia a mensagem e o anexo. Atualiza a interface sem fechar o chat.
+ * Envia a resposta de texto e o anexo para o banco de dados MySQL.
  */
-function enviarRespostaCliente(ticketId) {
+async function enviarRespostaCliente(ticketId) {
     const campoTexto = document.getElementById('reply-text');
     const texto = campoTexto ? campoTexto.value : "";
 
-    if (!texto.trim() && !anexoTemporario) {
-        alert("Digite uma mensagem ou anexe um arquivo.");
-        return;
-    }
-    
+    // Impede o envio se não houver texto nem anexo
+    if (!texto.trim() && !anexoTemporario) return;
 
-    let listaTickets = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
-    const index = listaTickets.findIndex(t => t.id === ticketId);
+    const payload = {
+        ticket_id: ticketId,
+        autor: usuarioAtivo.email, // Identifica quem está enviando
+        texto: texto,
+        anexo_conteudo: anexoTemporario ? anexoTemporario.conteudo : null
+    };
 
-    if (index !== -1) {
-        // Garante que o array de mensagens existe
-        if (!listaTickets[index].mensagens) listaTickets[index].mensagens = [];
+    try {
+        const response = await fetch('http://localhost:3000/api/mensagens', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
 
-        const novaMensagem = {
-            autor: usuarioAtivo.nome,
-            perfil: "cliente",
-            texto: texto,
-            data: new Date().toISOString(),
-            anexo: anexoTemporario 
-        };
+        if (response.ok) {
+            // 1. Limpa os campos de entrada após o sucesso
+            if (campoTexto) campoTexto.value = "";
+            anexoTemporario = null;
+            const preview = document.getElementById('file-preview-name');
+            if (preview) preview.innerText = "";
 
-        listaTickets[index].mensagens.push(novaMensagem);
-        localStorage.setItem('tickets_gesistec', JSON.stringify(listaTickets));
-
-        // Limpeza de campos
-        if(campoTexto) campoTexto.value = "";
-        anexoTemporario = null;
-        const preview = document.getElementById('file-preview-name');
-        if(preview) preview.innerText = "";
-        
-        // Refresh inteligente: Localiza o botão na linha da tabela para re-renderizar
-        const btnRef = document.querySelector(`button[onclick*="irParaInteracao(${ticketId}"]`);
-        irParaInteracao(ticketId, btnRef, true); 
+            // 2. Atualiza o Histórico de Interações sem fechar a aba
+            // Localiza o botão original na tabela para disparar o refresh da aba aberta
+            const btnRef = document.querySelector(`button[onclick*="irParaInteracao(${ticketId}"]`);
+            if (btnRef) {
+                // Chama a função de abertura com 'true' para forçar apenas o recarregamento dos dados
+                irParaInteracao(ticketId, btnRef, true); 
+            }
+        } else {
+            alert("Erro ao salvar sua resposta no servidor.");
+        }
+    } catch (error) {
+        console.error("Erro na comunicação:", error);
+        alert("Não foi possível conectar ao servidor para enviar a resposta.");
     }
 }
 
@@ -234,10 +241,13 @@ function fecharInline(btn) {
     // agora é possível abrir este ou outro ticket novamente.
     ticketAbertoId = null;
 }
-function irParaInteracao(id, btn, forcarAbertura = false) {
+/**
+ * Abre a área de interação (chat) buscando dados do MySQL
+ */
+async function irParaInteracao(id, btn, forcarAbertura = false) {
     const existingRow = document.querySelector('.row-interacao');
 
-    // Se clicar no mesmo ID e não for um refresh, fecha a aba
+    // Se clicar no mesmo ID e já estiver aberto, fecha
     if (ticketAbertoId === id && !forcarAbertura) {
         if (existingRow) existingRow.remove();
         ticketAbertoId = null;
@@ -245,75 +255,83 @@ function irParaInteracao(id, btn, forcarAbertura = false) {
     }
 
     if (existingRow) existingRow.remove();
-
     ticketAbertoId = id;
-    const lista = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
-    const ticket = lista.find(t => t.id === id);
 
-    if (!ticket) return;
+    try {
+        // 1. Buscamos o histórico de mensagens do banco de dados
+        const response = await fetch(`http://localhost:3000/api/mensagens/${id}`);
+        const mensagens = await response.json();
 
-    const rowAtual = btn.closest('tr');
-    const template = document.getElementById('templateInteracao');
-    const clone = template.content.cloneNode(true);
+        // 2. Precisamos dos dados básicos do ticket (assunto, etc)
+        // Como já carregamos a lista, podemos buscar no array local que criamos no carregarTickets
+        // Ou, se preferir, usar os dados da linha da tabela
+        const rowAtual = btn.closest('tr');
+        const assunto = rowAtual.cells[2].innerText;
+        const status = rowAtual.cells[4].innerText;
 
-    // Metadados
-    clone.querySelector('#ticketIdDisplay').innerText = ticket.id;
-    clone.querySelector('#descDoc').innerText = ticket.assunto;
-    clone.querySelector('#solicitanteDoc').innerText = ticket.emailCliente;
-    clone.querySelector('#displayPrioridade').innerText = ticket.prioridade;
-    clone.querySelector('#dataCriacaoDisplay').innerText = `por ${formatarDataReferencia(ticket.dataCriacao)}`;
-    
-    const slaElement = clone.querySelector('#slaDisplay');
-    if(slaElement) slaElement.innerHTML = `<i class="far fa-clock"></i> ${calcularSLA(ticket.dataCriacao)}`;
+        // 3. Pegamos o template do HTML e clonamos
+        const template = document.getElementById('templateInteracao');
+        if (!template) {
+            console.error("Template 'templateInteracao' não encontrado no HTML!");
+            return;
+        }
+        const clone = template.content.cloneNode(true);
 
-    const scrollArea = clone.querySelector('.content-scroll-area');
-    const mensagens = ticket.mensagens || [];
-    
-    // 1. Corrigindo a lógica das mensagens dentro da variável
-    const chatHTML = `
-        <div class="conversation-container" style="margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
-            <h5 style="margin-bottom: 20px; color: #1e293b; font-weight: 800;">Histórico de Interações</h5>
-            <div class="chat-flow">
-                ${mensagens.length > 0 ? mensagens.map(msg => `
-                    <div class="interaction-card" style="border-left: 5px solid ${msg.perfil === 'suporte' ? '#10b981' : '#2563eb'}; margin-bottom: 15px; padding: 12px; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                        <div class="interaction-header" style="margin-bottom: 8px; display: flex; justify-content: space-between;">
-                            <strong>${msg.autor} 
-                                <span class="profile-tag" style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: ${msg.perfil === 'suporte' ? '#dcfce7' : '#dbeafe'}">
-                                    ${msg.perfil === 'suporte' ? 'Suporte GESISTEC' : 'Cliente'}
-                                </span>
-                            </strong>
-                            <span style="font-size: 11px; color: #64748b;">${new Date(msg.data).toLocaleString()}</span>
+        // 4. Preenchemos os metadados do cabeçalho do chat
+        clone.querySelector('#ticketIdDisplay').innerText = id;
+        clone.querySelector('#descDoc').innerText = assunto;
+        clone.querySelector('#solicitanteDoc').innerText = usuarioAtivo.email;
+        
+        const statusSide = clone.querySelector('.status-title-side');
+        if(statusSide) statusSide.innerText = status;
+
+        // 5. Montamos o HTML das mensagens do histórico
+        // 5. Montamos o HTML das mensagens do histórico
+const scrollArea = clone.querySelector('.content-scroll-area');
+const chatHTML = `
+    <div class="conversation-container" style="margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+        <h5 style="margin-bottom: 15px; color: #1e293b;">Histórico de Interações</h5>
+        <div class="chat-flow">
+            ${mensagens.length > 0 ? mensagens.map(msg => {
+                
+                // --- Lógica do Horário ---
+                const dataObjeto = new Date(msg.data);
+                const dataFormat = dataObjeto.toLocaleDateString('pt-BR');
+                const horaFormat = dataObjeto.toLocaleTimeString('pt-BR', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                // -------------------------
+
+                return `
+                    <div class="interaction-card" style="border-left: 4px solid ${msg.autor === usuarioAtivo.email ? '#2563eb' : '#10b981'}; margin-bottom: 12px; padding: 10px; background: #f8fafc; border-radius: 6px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
+                            <strong>${msg.autor}</strong>
+                            <span style="color: #64748b;">${dataFormat} às ${horaFormat}</span>
                         </div>
-                        <div class="interaction-content">
-                            <p style="margin: 0; font-size: 14px; color: #334155;">${msg.texto}</p>
-                        </div>
-                        ${msg.anexo ? `<button onclick="baixarAnexo('${msg.anexo.conteudo}', '${msg.anexo.nome}')" class="btn-link" style="margin-top: 8px; border: none; background: none; color: #2563eb; cursor: pointer; font-size: 12px;">📎 ${msg.anexo.nome}</button>` : ''}
+                        <p style="margin: 0; font-size: 13px;">${msg.texto}</p>
                     </div>
-                `).join('') : '<p style="text-align: center; color: #94a3b8; font-size: 13px;">Nenhuma interação registrada.</p>'}
-            </div>
+                `;
+            }).join('') : '<p style="text-align: center; color: #94a3b8; font-size: 13px;">Nenhuma mensagem ainda.</p>'}
         </div>
-    `;
-    
-    // 2. Inserindo o chat na área de scroll
-    if (scrollArea) scrollArea.insertAdjacentHTML('beforeend', chatHTML);
+    </div>
+`;
 
-    // 3. Tabela de anexos (originais)
-    const tabelaAnexos = clone.querySelector('#listaAnexosDetalhada');
-    const anexos = ticket.anexos || [];
-    if (tabelaAnexos) {
-        tabelaAnexos.innerHTML = anexos.map(a => `
-            <tr>
-                <td onclick="baixarAnexo('${a.conteudo}', '${a.nome}')" style="cursor:pointer; color:#2563eb; font-weight:600;">
-                    <i class="far fa-file-alt"></i> ${a.nome}
-                </td>
-                <td>${a.tamanho || '---'}</td>
-                <td>${formatarDataReferencia(a.data)}</td>
-                <td>${a.usuario || 'Sistema'}</td> 
-            </tr>
-        `).join('');
+        if (scrollArea) scrollArea.insertAdjacentHTML('beforeend', chatHTML);
+
+        // 6. Inserimos a nova linha logo abaixo da linha clicada
+        rowAtual.after(clone);
+
+        // 7. Configura o botão de enviar resposta dentro do chat que acabou de abrir
+        const btnResponder = document.querySelector('.btn-reply-send');
+        if (btnResponder) {
+            btnResponder.onclick = () => enviarRespostaCliente(id);
+        }
+
+    } catch (error) {
+        console.error("Erro ao carregar interação:", error);
+        alert("Não foi possível carregar o histórico deste chamado.");
     }
-
-    rowAtual.after(clone);
 }
 
 // --- Funções de Auxílio e Dashboard ---
@@ -363,25 +381,28 @@ function renderizarLista(ticketsParaExibir) {
         const tipoClass = ticket.tipo === 'Erro' ? 'type-erro' : 
                           ticket.tipo === 'Melhoria' ? 'type-melhoria' : 'type-duvida';
 
-        tabela.innerHTML += `
-            <tr>
-                <td><strong>#${ticket.id}</strong></td>
-                <td><span class="type-badge ${tipoClass}">${ticket.tipo || 'Geral'}</span></td>
-                <td>${ticket.assunto}</td>
-                <td>${ticket.prioridade}</td>
-                <td><span class="badge ${statusClass}">${ticket.status}</span></td>
-                <td>
-                    <button onclick="irParaInteracao(${ticket.id}, this)" class="btn-edit">
-                        <i class="fas fa-external-link-alt"></i>
-                    </button>
-                    <button onclick="excluirTicket(${ticket.id})" class="btn-delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
+        // ... dentro da sua função renderizarLista(ticketsParaExibir) ...
+tabela.innerHTML += `
+    <tr>
+        <td><strong>#${ticket.id}</strong></td>
+        <td><span class="type-badge ${tipoClass}">${ticket.tipo || 'Geral'}</span></td>
+        <td>${ticket.assunto}</td>
+        <td>${ticket.prioridade}</td>
+        <td><span class="badge ${statusClass}">${ticket.status}</span></td>
+        <td>
+            <!-- O botão que abre a interação -->
+            <button onclick="irParaInteracao(${ticket.id}, this)" class="btn-edit">
+                <i class="fas fa-external-link-alt"></i>
+            </button>
+            <button onclick="excluirTicket(${ticket.id})" class="btn-delete">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    </tr>
+`;
     });
 }
+
 
 function calcularSLA(dataISO) {
     if (!dataISO) return "0min";
