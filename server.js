@@ -67,34 +67,25 @@ app.post('/api/tickets', (req, res) => {
 
 app.get('/api/tickets', (req, res) => {
     const login = req.query.login;
-
-    // 1. Base da query (SEM o ORDER BY aqui no meio)
     let sql = `SELECT 
                 NRO_TICKET as id, 
                 DES_TICKET as assunto, 
                 DES_STATUS as status, 
                 DES_PRIORIDADE as prioridade, 
                 DAT_ABERTURA as data, 
-                DES_LOGIN as usuario,
-                NRO_TIPO as nro_tipo
+                DES_LOGIN as usuario 
                FROM ticket`;
     
     let params = [];
-
-    // 2. Se tiver login, adicionamos o WHERE (repare no espaço no começo da string)
     if (login) {
         sql += " WHERE DES_LOGIN = ?";
         params = [login];
     }
-
-    // 3. O ORDER BY SEMPRE fica por último
+    
     sql += " ORDER BY NRO_TICKET DESC";
 
     db.query(sql, params, (err, data) => {
-        if (err) {
-            console.error("❌ ERRO SQL:", err.sqlMessage);
-            return res.status(500).json({ error: err.sqlMessage });
-        }
+        if (err) return res.status(500).json(err);
         res.json(data);
     });
 });
@@ -104,7 +95,8 @@ app.get('/api/tickets', (req, res) => {
 // ==========================================
 app.post('/api/mensagens', (req, res) => {
     const { ticket_id, autor, texto, anexo_conteudo } = req.body;
-    const sql = `INSERT INTO atende (DAT_ATENDE, DES_ATENDE, FLG_ESTADO, DOC_ANEXO, NRO_TICKET, DES_LOGIN) VALUES (CURDATE(), ?, 'A', ?, ?, ?)`;
+    const sql = `INSERT INTO atende (DAT_ATENDE, DES_ATENDE, FLG_ESTADO, DOC_ANEXO, NRO_TICKET, DES_LOGIN) 
+             VALUES (NOW(), ?, 'A', ?, ?, ?)`;
     
     db.query(sql, [texto, anexo_conteudo, ticket_id, autor], (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
