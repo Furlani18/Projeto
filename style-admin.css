@@ -281,3 +281,203 @@ close-btn { background: #f1f5f9; border: none; width: 32px; height: 32px; border
     color: var(--text-main);
     font-size: 14px;
 }
+
+/* Card de Resposta Moderno */
+.reply-card-modern {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    border-left: 6px solid #2563eb;
+    margin: 20px 0;
+    overflow: hidden;
+    animation: slideIn 0.3s ease-out;
+}
+
+.reply-header {
+    padding: 15px 20px;
+    background: #ffffff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.ticket-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #1e293b;
+    font-weight: 500;
+}
+
+.ticket-info i { color: #2563eb; }
+
+.btn-close-modern {
+    background: #f1f5f9;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-close-modern:hover {
+    background: #ef4444;
+    color: white;
+}
+
+.reply-body { padding: 20px; }
+
+.reply-textarea {
+    width: 100%;
+    min-height: 120px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 15px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+    transition: border-color 0.2s;
+    outline: none;
+}
+
+.reply-textarea:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.reply-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.attachment-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn-attach-modern {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    padding: 8px 16px;
+    border-radius: 6px;
+    color: #475569;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-attach-modern:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+
+.file-name-preview {
+    font-size: 13px;
+    color: #2563eb;
+    font-weight: 500;
+}
+
+.btn-send-modern {
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-send-modern:hover { background: #1d4ed8; }
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+
+.btn-back-modern {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f1f5f9; /* Cinza azulado bem claro */
+    color: #475569;      /* Texto grafite suave */
+    border: 1px solid #e2e8f0;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-back-modern:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+    border-color: #cbd5e1;
+    transform: translateX(-3px); /* Pequeno movimento para a esquerda */
+}
+
+.btn-back-modern i {
+    font-size: 12px;
+    transition: transform 0.2s ease;
+}
+
+/* Efeito extra na seta ao passar o mouse */
+.btn-back-modern:hover i {
+    transform: translateX(-2px);
+}
+
+
+/* Container do Fluxo */
+.chat-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 10px;
+}
+
+/* Bolha base */
+.interaction-card {
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: 15px;
+    position: relative;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* Minha mensagem (Direita - Azul) */
+.msg-me {
+    align-self: flex-end;
+    background-color: #dcf8c6; /* Verde clarinho tipo Zap ou use #e3efff para azul */
+    border-bottom-right-radius: 2px;
+    border-left: 4px solid #2563eb !important;
+}
+
+/* Mensagem do outro (Esquerda - Cinza/Branco) */
+.msg-other {
+    align-self: flex-start;
+    background-color: #ffffff;
+    border-bottom-left-radius: 2px;
+    border-left: 4px solid #10b981 !important;
+    border: 1px solid #e2e8f0;
+}
+
+.msg-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+    gap: 20px;
+}
+
+
