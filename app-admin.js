@@ -1,13 +1,19 @@
-// 1. Verificação de Segurança e Sessão
-const usuarioSessao = JSON.parse(localStorage.getItem('sessao_ativa'));
+// 1. Verificação de Sessão e Segurança
+const usuarioAtivoStr = localStorage.getItem('sessao_ativa');
 
-if (!usuarioSessao || (usuarioSessao.perfil !== 'admin' && usuarioSessao.perfil !== 'colaborador')) {
+if (!usuarioAtivoStr) {
     window.location.href = 'index.html';
 }
 
-// Inicialização de textos e data no Header
+const usuarioAtivo = JSON.parse(usuarioAtivoStr);
+
+if (usuarioAtivo.perfil !== 'admin' && usuarioAtivo.perfil !== 'colaborador') {
+    window.location.href = 'index.html';
+}
+
+// 2. Inicialização do Header
 const elNome = document.getElementById('nomeAdmin');
-if (elNome) elNome.innerText = usuarioSessao.nome;
+if (elNome) elNome.innerText = usuarioAtivo.nome;
 
 const elData = document.getElementById('dataAtual');
 if (elData) {
@@ -16,10 +22,11 @@ if (elData) {
     });
 }
 
-// Variáveis Globais de Controle
+// 3. Variáveis Globais de Controle
 let chartPrioridade, chartStatus;
 let anexoAdminTemp = null; 
-let listaTicketsGlobal = []; // Armazena os tickets vindos do banco
+let listaTicketsGlobal = []; 
+let ticketSelecionadoId = null; // Declarada corretamente aqui
 
 /**
  * NAVEGAÇÃO ENTRE TELAS
@@ -44,7 +51,7 @@ function navegarMenu(viewId) {
     if (viewId === 'usersView') {
         carregarUsuarios();
     } else if (viewId === 'dashboardView' || viewId === 'ticketsSection') {
-        carregarEstatisticas(); // Carrega os dados do banco para ambos
+        carregarEstatisticas(); 
     }
 }
 
@@ -58,11 +65,12 @@ async function carregarEstatisticas() {
 
         if (!Array.isArray(dadosBrutos)) return;
 
-        // Tradução de Flags do Banco para Texto do Front-end
+        // Mapeamento dos dados com JOIN da empresa
         listaTicketsGlobal = dadosBrutos.map(t => ({
             id: t.id,
             assunto: t.assunto,
-            usuario: t.usuario, // E-mail do cliente
+            usuario: t.email_usuario, 
+            empresa: t.nome_empresa || "Empresa não cadastrada", 
             status: t.status === 'A' ? 'Pendente' : (t.status === 'E' ? 'Em Atendimento' : 'Finalizado'),
             prioridade: t.prioridade === 'A' ? 'Alta' : (t.prioridade === 'M' ? 'Média' : 'Baixa'),
             data: t.data
@@ -73,14 +81,10 @@ async function carregarEstatisticas() {
             if (el) el.innerText = valor;
         };
 
-        // Filtros para as métricas
-        const pendentes = listaTicketsGlobal.filter(t => t.status === 'Pendente');
-        const emAtendimento = listaTicketsGlobal.filter(t => t.status === 'Em Atendimento');
-
+        // Métricas do Dashboard
         setMetric('countVencidos', listaTicketsGlobal.filter(t => t.prioridade === 'Alta' && t.status !== 'Finalizado').length); 
-        setMetric('countAbertos', pendentes.length);
-        setMetric('countEspera', emAtendimento.length);
-        setMetric('countNaoAtribuidos', pendentes.length);
+        setMetric('countAbertos', listaTicketsGlobal.filter(t => t.status === 'Pendente').length);
+        setMetric('countEspera', listaTicketsGlobal.filter(t => t.status === 'Em Atendimento').length);
         setMetric('countMonitorados', listaTicketsGlobal.length);
 
         renderizarGraficosDonut(listaTicketsGlobal);
@@ -105,7 +109,10 @@ function renderizarTabelaGeral(tickets) {
         return `
             <tr>
                 <td><span style="color: #2563eb; font-weight: 800;">#${ticket.id}</span></td>
-                <td><span style="font-weight: 700;">${ticket.usuario}</span></td>
+                <td>
+                    <div style="font-weight: 700; color: #1e293b;">${ticket.empresa}</div>
+                    <small style="color: #94a3b8; font-size: 11px;">${ticket.usuario}</small>
+                </td>
                 <td>${ticket.assunto}</td>
                 <td>
                     <span style="font-weight:600; color: ${ticket.prioridade === 'Alta' ? '#ef4444' : '#475569'};">
@@ -124,7 +131,54 @@ function renderizarTabelaGeral(tickets) {
 }
 
 /**
- * ENVIO DE RESPOSTA (MySQL)
+ * INTERAÇÃO DE CHAT (ADMIN)
+ */
+async function abrirRespostaAdmin(id) {
+    ticketSelecionadoId = id; // Atribui o ID global
+    
+    try {
+        const response = await fetch(`http://localhost:3000/api/mensagens/${id}`);
+        const mensagens = await response.json();
+
+        const chatContainer = document.getElementById('historicoChatAdmin');
+        chatContainer.innerHTML = mensagens.map(msg => {
+            const dataObjeto = new Date(msg.data);
+            const dataFormat = dataObjeto.toLocaleDateString('pt-BR');
+            const horaFormat = dataObjeto.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            
+            const temAnexo = msg.anexo && msg.anexo.length > 50;
+            const htmlAnexoMsg = temAnexo ? `
+                <div style="margin-top:10px; border-top:1px dashed #e2e8f0; padding-top:8px;">
+                    <a href="${msg.anexo}" download="anexo_${msg.id}" style="font-size:12px; color:#2563eb; text-decoration:none; font-weight: 600;">
+                        <i class="fas fa-download"></i> Baixar Arquivo
+                    </a>
+                </div>` : '';
+
+            return `
+                <div class="interaction-card ${msg.email_autor === usuarioAtivo.email ? 'msg-me' : 'msg-other'}">
+                    <div class="msg-header">
+                        <strong style="font-size: 12px; color: #1e293b;">${msg.autor_display}</strong>
+                        <span style="font-size: 10px; color: #94a3b8;">${dataFormat} às ${horaFormat}</span>
+                    </div>
+                    <p style="margin: 0; font-size: 14px; color: #334155; line-height: 1.4;">${msg.texto}</p>
+                    ${htmlAnexoMsg}
+                </div>
+            `;
+        }).join('');
+
+        document.getElementById('idTicketResponder').innerText = id;
+        document.getElementById('cardTabelaTickets').style.display = 'none'; 
+        document.getElementById('containerInteracaoAdmin').style.display = 'block'; 
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    } catch (error) {
+        console.error("Erro ao carregar chat:", error);
+    }
+}
+
+/**
+ * ENVIO DE RESPOSTA (ADMIN)
  */
 async function enviarRespostaAdmin() {
     const campoTexto = document.getElementById('textoRespostaAdmin');
@@ -137,7 +191,7 @@ async function enviarRespostaAdmin() {
 
     const payload = {
         ticket_id: idTicket,
-        autor: usuarioSessao.email, // Salva o e-mail do admin que respondeu
+        autor: usuarioAtivo.email,
         texto: campoTexto.value,
         anexo_conteudo: anexoAdminTemp ? anexoAdminTemp.conteudo : null
     };
@@ -150,10 +204,10 @@ async function enviarRespostaAdmin() {
         });
 
         if (response.ok) {
-            alert("Resposta enviada e ticket atualizado!");
             campoTexto.value = "";
+            anexoAdminTemp = null;
+            document.getElementById('preview-anexo-admin').innerText = '';
             fecharAreaResposta();
-            carregarEstatisticas(); // Atualiza a lista e gráficos
         }
     } catch (error) {
         alert("Erro ao enviar resposta ao banco.");
@@ -161,7 +215,7 @@ async function enviarRespostaAdmin() {
 }
 
 /**
- * GESTÃO DE USUÁRIOS (MySQL)
+ * GESTÃO DE USUÁRIOS
  */
 async function carregarUsuarios() {
     const tbody = document.getElementById('listaUsuarios');
@@ -189,27 +243,43 @@ async function carregarUsuarios() {
     }
 }
 
-// Funções de Modal e Auxiliares
-function abrirRespostaAdmin(id) {
-    const ticket = listaTicketsGlobal.find(t => t.id == id);
-    if (ticket) {
-        document.getElementById('idTicketResponder').innerText = id;
-        document.getElementById('areaRespostaAdmin').style.display = 'block';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+// FUNÇÃO DELETAR (Adicionada)
+async function deletarUsuario(email) {
+    if (!confirm(`Deseja remover o acesso de ${email}?`)) return;
+
+    try {
+        const response = await fetch(`http://localhost:3000/api/usuarios/${email}`, { method: 'DELETE' });
+        if (response.ok) {
+            carregarUsuarios();
+        }
+    } catch (error) {
+        alert("Erro ao deletar usuário.");
     }
 }
 
+/**
+ * AUXILIARES E GRÁFICOS
+ */
 function fecharAreaResposta() {
-    document.getElementById('areaRespostaAdmin').style.display = 'none';
-    anexoAdminTemp = null;
+    document.getElementById('containerInteracaoAdmin').style.display = 'none';
+    document.getElementById('cardTabelaTickets').style.display = 'block';
+    carregarEstatisticas(); 
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function logout() {
-    localStorage.removeItem('sessao_ativa');
-    window.location.href = 'index.html';
+function prepararAnexoAdmin(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        anexoAdminTemp = { nome: file.name, conteudo: e.target.result };
+        const preview = document.getElementById('preview-anexo-admin');
+        if (preview) preview.innerText = "📎 " + file.name;
+    };
+    reader.readAsDataURL(file);
 }
 
-// Funções de Gráficos (Mantidas conforme seu original, mas recebendo dados do banco)
 function renderizarGraficosDonut(tickets) {
     const config = (data, labels, colors) => ({
         type: 'doughnut',
@@ -238,25 +308,6 @@ function renderizarGraficosDonut(tickets) {
     }
 }
 
-/**
- * GESTÃO DE MODAL DE USUÁRIO
- */
-function abrirModalUsuario() {
-    const modal = document.getElementById('modalUsuario');
-    if (modal) {
-        modal.style.display = 'flex';
-    }
-}
-
-function fecharModalUsuario() {
-    const modal = document.getElementById('modalUsuario');
-    if (modal) {
-        modal.style.display = 'none';
-        const form = document.getElementById('formUsuario');
-        if (form) form.reset();
-    }
-}
-
 function renderizarBarrasProgresso(tickets) {
     const container = document.getElementById('barChartContainer');
     if (!container) return;
@@ -269,5 +320,10 @@ function renderizarBarrasProgresso(tickets) {
     }).join('');
 }
 
-// Inicialização
+function logout() {
+    localStorage.removeItem('sessao_ativa');
+    window.location.href = 'index.html';
+}
+
+// Inicialização automática
 carregarEstatisticas();
