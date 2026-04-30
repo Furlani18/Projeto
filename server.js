@@ -4,7 +4,9 @@ const cors = require('cors');
 
 const app = express();
 app.use(cors());
+// Aumentado para 50mb para suportar anexos em Base64
 app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const db = mysql.createPool({
     host: 'localhost',
@@ -30,34 +32,75 @@ app.post('/api/login', (req, res) => {
     db.query(sql, [email, senha], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         
-        // Dentro da rota app.post('/api/login', ...)
-if (results.length > 0) {
-    const user = results[0];
-    let perfilTraduzido = 'colaborador'; // Valor padrão
+        if (results.length > 0) {
+            const user = results[0];
+            let perfilTraduzido = 'cliente';
 
-    if (user.tipo === 'A') perfilTraduzido = 'admin';
-    if (user.tipo === 'E') perfilTraduzido = 'colaborador';
-    if (user.tipo === 'C') perfilTraduzido = 'cliente'; // Aqui está o segredo!
+            if (user.tipo === 'A') perfilTraduzido = 'admin';
+            else if (user.tipo === 'E') perfilTraduzido = 'colaborador';
+            else if (user.tipo === 'C') perfilTraduzido = 'cliente';
 
-    res.json({
-        id: user.id_empresa,
-        nome: user.nome,
-        email: user.email,
-        perfil: perfilTraduzido // O Front-end vai ler essa palavra
-    });
+            res.json({
+                id: user.id_empresa,
+                nome: user.nome,
+                email: user.email,
+                perfil: perfilTraduzido
+            });
         } else {
             res.status(401).json({ message: "Usuário ou senha incorretos!" });
         }
     });
 });
 
-// ==========================================
+/// ==========================================
 // 2. TICKETS
 // ==========================================
+
+// LISTAR TICKETS (Agora buscando o nome da empresa)
+app.get('/api/tickets', (req, res) => {
+    const { login } = req.query;
+    
+    // SQL unindo Ticket -> Colaborador -> Empresa
+    let sql = `
+        SELECT 
+            t.NRO_TICKET as id, 
+            t.DES_TICKET as assunto, 
+            t.DES_LOGIN as email_usuario, 
+            e.NOM_EMPRESA as nome_empresa, 
+            t.DES_STATUS as status, 
+            t.DES_PRIORIDADE as prioridade, 
+            t.DAT_ABERTURA as data,
+            t.NRO_TIPO as nro_tipo
+        FROM ticket t
+        LEFT JOIN colaborador c ON t.DES_LOGIN = c.DES_LOGIN
+        LEFT JOIN empresa e ON c.NRO_EMPRESA = e.NRO_EMPRESA`;
+
+    const params = [];
+    if (login) {
+        sql += ` WHERE t.DES_LOGIN = ?`;
+        params.push(login);
+    }
+    sql += ` ORDER BY t.NRO_TICKET DESC`;
+
+    db.query(sql, params, (err, results) => {
+        if (err) {
+            console.error("ERRO NO SQL:", err.sqlMessage);
+            return res.status(500).json({ error: err.sqlMessage });
+        }
+        res.json(results);
+    });
+});
+
+// CRIAR TICKET (Usando as colunas reais da sua imagem)
 app.post('/api/tickets', (req, res) => {
     const { assunto, prioridade, login, tipo_id, anexo } = req.body;
+    
+    // Traduz 'Alta' -> 'A', 'Média' -> 'M', etc.
     const prioCode = prioridade ? prioridade.charAt(0).toUpperCase() : 'B';
-    const sql = `INSERT INTO ticket (DES_TICKET, DES_STATUS, DES_PRIORIDADE, DAT_ABERTURA, NRO_TIPO, DES_LOGIN, DOC_ANEXO) VALUES (?, 'A', ?, CURDATE(), ?, ?, ?)`;
+    
+    const sql = `INSERT INTO ticket 
+        (DES_TICKET, DES_STATUS, DES_PRIORIDADE, DAT_ABERTURA, NRO_TIPO, DES_LOGIN, DOC_ANEXO) 
+        VALUES (?, 'A', ?, NOW(), ?, ?, ?)`;
     
     db.query(sql, [assunto, prioCode, tipo_id || 1, login, anexo], (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -65,112 +108,91 @@ app.post('/api/tickets', (req, res) => {
     });
 });
 
-app.get('/api/tickets', (req, res) => {
-    const login = req.query.login;
-    let sql = `SELECT 
-                NRO_TICKET as id, 
-                DES_TICKET as assunto, 
-                DES_STATUS as status, 
-                DES_PRIORIDADE as prioridade, 
-                DAT_ABERTURA as data, 
-                DES_LOGIN as usuario 
-               FROM ticket`;
-    
-    let params = [];
-    if (login) {
-        sql += " WHERE DES_LOGIN = ?";
-        params = [login];
-    }
-    
-    sql += " ORDER BY NRO_TICKET DESC";
-
-    db.query(sql, params, (err, data) => {
-        if (err) return res.status(500).json(err);
-        res.json(data);
-    });
-});
-
 // ==========================================
-// 3. CHAT / ATENDE
+// 3. MENSAGENS / CHAT
 // ==========================================
-app.post('/api/mensagens', (req, res) => {
-    const { ticket_id, autor, texto, anexo_conteudo } = req.body;
-    const sql = `INSERT INTO atende (DAT_ATENDE, DES_ATENDE, FLG_ESTADO, DOC_ANEXO, NRO_TICKET, DES_LOGIN) 
-             VALUES (NOW(), ?, 'A', ?, ?, ?)`;
-    
-    db.query(sql, [texto, anexo_conteudo, ticket_id, autor], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        db.query("UPDATE ticket SET DES_STATUS = 'E' WHERE NRO_TICKET = ?", [ticket_id]);
-        res.json({ message: "Interação registrada!", id: result.insertId });
-    });
-});
 
+// BUSCAR MENSAGENS DE UM TICKET (Com JOIN para pegar o Nome do Autor)
 app.get('/api/mensagens/:ticketId', (req, res) => {
-    const sql = `SELECT NRO_ATENDE as id, DAT_ATENDE as data, DES_ATENDE as texto, DES_LOGIN as autor FROM atende WHERE NRO_TICKET = ? ORDER BY NRO_ATENDE ASC`;
-    db.query(sql, [req.params.ticketId], (err, data) => {
-        if (err) return res.status(500).json(err);
-        res.json(data);
-    });
-});
-
-// ==========================================
-// 4. GESTÃO DE USUÁRIOS (Versão Centralizada)
-// ==========================================
-
-// LISTAR: Busca todo mundo da tabela colaborador
-app.get('/api/usuarios', (req, res) => {
+    const { ticketId } = req.params;
+    
     const sql = `
         SELECT 
-            DES_NOME as nome, 
-            DES_LOGIN as email, 
-            FLG_TIP_COL as tipo_flag,
-            NRO_EMPRESA as empresa_id
-        FROM colaborador
-    `;
+            a.DES_LOGIN as email_autor, 
+            c.DES_NOME as nome_autor, 
+            a.DAT_ATENDE as data, 
+            a.DES_ATENDE as texto, 
+            a.DOC_ANEXO as anexo, 
+            a.NRO_ATENDE as id 
+        FROM atende a
+        LEFT JOIN colaborador c ON a.DES_LOGIN = c.DES_LOGIN
+        WHERE a.NRO_TICKET = ? 
+        ORDER BY a.NRO_ATENDE ASC`;
+
+    db.query(sql, [ticketId], (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        const mensagensFormatadas = results.map(row => ({
+            id: row.id,
+            data: row.data,
+            texto: row.texto,
+            email_autor: row.email_autor,
+            autor_display: row.nome_autor || row.email_autor,
+            anexo: row.anexo ? row.anexo.toString('utf-8') : null
+        }));
+        
+        res.json(mensagensFormatadas);
+    });
+});
+
+// ENVIAR MENSAGEM NO CHAT
+app.post('/api/mensagens', (req, res) => {
+    const { ticket_id, autor, texto, anexo_conteudo } = req.body;
+
+    const sql = `
+        INSERT INTO atende (DAT_ATENDE, DES_ATENDE, FLG_ESTADO, DOC_ANEXO, NRO_TICKET, DES_LOGIN) 
+        VALUES (NOW(), ?, 'A', ?, ?, ?)`;
+
+    db.query(sql, [texto, anexo_conteudo, ticket_id, autor], (err, result) => {
+        if (err) return res.status(500).json({ error: "Erro ao salvar mensagem" });
+        res.json({ message: "Mensagem enviada com sucesso!", id: result.insertId });
+    });
+});
+
+// ==========================================
+// 4. GESTÃO DE USUÁRIOS
+// ==========================================
+
+app.get('/api/usuarios', (req, res) => {
+    const sql = `SELECT DES_NOME as nome, DES_LOGIN as email, FLG_TIP_COL as tipo_flag FROM colaborador`;
     db.query(sql, (err, data) => {
         if (err) return res.status(500).json(err);
         
-        // Traduzimos as flags para nomes bonitos para a sua tabela no Front-end
         const listaTraduzida = data.map(user => ({
             nome: user.nome,
             email: user.email,
-            perfil: user.tipo_flag === 'A' ? 'Admin' : user.tipo_flag === 'E' ? 'Colaborador' : user.tipo_flag === 'C' ? 'Cliente' : 'Cliente',
-            status_tipo: 'A' // Apenas para manter compatibilidade com seu badge de 'Ativo'
+            perfil: user.tipo_flag === 'A' ? 'Admin' : user.tipo_flag === 'E' ? 'Colaborador' : 'Cliente'
         }));
-        
         res.json(listaTraduzida);
     });
 });
 
-// CADASTRAR: Sempre insere na colaborador
 app.post('/api/usuarios', (req, res) => {
     const { nome, email, senha, perfil } = req.body;
+    let flag = perfil === 'admin' ? 'A' : (perfil === 'colaborador' ? 'E' : 'C');
+    let nroEmpresa = (perfil === 'cliente') ? 2 : 1; 
 
-    let flag = 'C'; 
-    if (perfil === 'admin') flag = 'A';
-    if (perfil === 'cliente') flag = 'E';
-
-    // Se for cliente, vinculamos à empresa dele (ex: 2). Se for equipe, à nossa (1).
-    const nroEmpresa = (perfil === 'cliente') ? 2 : 1; 
-
-    const sql = `INSERT INTO colaborador 
-                (DES_NOME, DES_LOGIN, DES_SENHA, NRO_EMPRESA, FLG_TIP_COL) 
-                VALUES (?, ?, ?, ?, ?)`;
-    
+    const sql = `INSERT INTO colaborador (DES_NOME, DES_LOGIN, DES_SENHA, NRO_EMPRESA, FLG_TIP_COL) VALUES (?, ?, ?, ?, ?)`;
     db.query(sql, [nome, email, senha, nroEmpresa, flag], (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ message: "Usuário gravado com sucesso!" });
     });
 });
 
-// DELETAR: Usa o email (DES_LOGIN) que é a sua chave primária
 app.delete('/api/usuarios/:email', (req, res) => {
-    const { email } = req.params;
-    const sql = "DELETE FROM colaborador WHERE DES_LOGIN = ?";
-
-    db.query(sql, [email], (err, result) => {
+    db.query("DELETE FROM colaborador WHERE DES_LOGIN = ?", [req.params.email], (err, result) => {
         if (err) return res.status(500).json(err);
-        res.json({ message: "Acesso removido com sucesso!" });
+        res.json({ message: "Acesso removido!" });
     });
 });
 
