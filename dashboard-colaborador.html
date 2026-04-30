@@ -12,7 +12,7 @@
     <div class="admin-container">
         <nav class="sidebar">
             <div class="sidebar-header">
-                <h3>GESISTEC Admin</h3>
+                <h3>GESISTEC</h3>
                 <p id="nomeAdmin">Carregando...</p>
             </div>
             <div class="sidebar-menu">
@@ -78,51 +78,68 @@
                 </section>
             </div>
 
-            <div id="ticketsSection" class="view-section" style="display: none;">
-                <header class="content-header">
-                    <h2>Gestão de Atendimentos</h2>
-                    <p>Gerencie as solicitações de todos os clientes.</p>
-                </header>
+           <div id="ticketsSection" class="view-section" style="display: none;">
+    <header class="content-header">
+        <h2>Gestão de Atendimentos</h2>
+        <p>Gerencie as solicitações de todos os clientes.</p>
+    </header>
 
-                <div id="areaRespostaAdmin" class="reply-container-admin" style="display:none;">
-                    <div class="reply-header-admin">
-                        <h4><i class="fas fa-comment-dots"></i> Respondendo Chamado #<span id="idTicketResponder"></span></h4>
-                        <button onclick="fecharAreaResposta()" class="close-btn-admin">&times;</button>
-                    </div>
-                    <textarea id="textoRespostaAdmin" class="reply-input-admin" placeholder="Escreva sua solução técnica..."></textarea>
-                    <div class="reply-actions-admin">
-                        <div class="action-left">
-                            <input type="file" id="anexoAdminInput" style="display:none" onchange="prepararAnexoAdmin(this)">
-                            <button class="btn-admin-attach" onclick="document.getElementById('anexoAdminInput').click()">
-                                <i class="fas fa-paperclip"></i> Anexar Print
-                            </button>
-                            <span id="preview-anexo-admin"></span>
-                        </div>
-                        <button class="btn-admin-send" onclick="enviarRespostaAdmin()">
-                            Enviar Resposta <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
+    <!-- Este container vai segurar o Chat + Caixa de Resposta -->
+    <div id="containerInteracaoAdmin" style="display:none; margin-bottom: 30px;">
+        <div id="historicoChatAdmin"></div> <!-- O chat vai carregar aqui -->
+        
+        <!-- Sua caixa de resposta modernizada agora fica aqui embaixo -->
+        <div id="areaRespostaAdmin" class="reply-card-modern">
+            <div class="reply-header">
+                <div class="ticket-info">
+                    <i class="fas fa-reply-all"></i>
+                    <span>Sua Resposta para o Chamado <strong>#<span id="idTicketResponder"></span></strong></span>
                 </div>
+                <button onclick="fecharAreaResposta()" class="btn-back-modern">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Voltar para a Fila</span>
+                </button>
+            </div>
 
-                <div class="card table-card">
-                    <div class="table-header"><h3>Fila de Chamados Recentes</h3></div>
-                    <div class="table-responsive">
-                        <table class="ticket-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Cliente</th>
-                                    <th>Assunto</th>
-                                    <th>Prioridade</th>
-                                    <th>Status</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="ticketsByClientList"></tbody>
-                        </table>
+            <div class="reply-body">
+                <textarea id="textoRespostaAdmin" class="reply-textarea" placeholder="Digite aqui a solução técnica detalhada..."></textarea>
+                <div class="reply-footer">
+                    <div class="attachment-area">
+                        <input type="file" id="anexoAdminInput" style="display:none" onchange="prepararAnexoAdmin(this)">
+                        <button class="btn-attach-modern" onclick="document.getElementById('anexoAdminInput').click()">
+                            <i class="fas fa-paperclip"></i> Anexar Documento
+                        </button>
+                        <span id="preview-anexo-admin" class="file-name-preview"></span>
                     </div>
+                    <button class="btn-send-modern" onclick="enviarRespostaAdmin()">
+                        <span>Enviar Resposta</span>
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Tickets (Sempre visível até abrir um chamado) -->
+    <div class="card table-card" id="cardTabelaTickets">
+        <div class="table-header"><h3>Fila de Chamados Recentes</h3></div>
+        <div class="table-responsive">
+            <table class="ticket-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <th>Assunto</th>
+                        <th>Prioridade</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="ticketsByClientList"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
             <div id="usersView" class="view-section" style="display: none;">
                 <header class="content-header">
