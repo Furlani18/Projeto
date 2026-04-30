@@ -80,7 +80,7 @@ async function finalizarCriacao(ticket) {
         if (response.ok) {
             fecharModal();
             alert("Chamado aberto com sucesso no MySQL!");
-            // carregarTickets(); // Implementaremos a busca do banco abaixo
+            carregarTickets(); // Implementaremos a busca do banco abaixo
         } else {
             const erro = await response.json();
             // Agora o alert vai mostrar o erro real do MySQL (ex: coluna faltando)
@@ -283,46 +283,95 @@ async function irParaInteracao(id, btn, forcarAbertura = false) {
         clone.querySelector('#solicitanteDoc').innerText = usuarioAtivo.email;
         
         const statusSide = clone.querySelector('.status-title-side');
+        // ... (seu código anterior para aqui)
+       // ... (seu código anterior)
         if(statusSide) statusSide.innerText = status;
 
-        // 5. Montamos o HTML das mensagens do histórico
-        // 5. Montamos o HTML das mensagens do histórico
-const scrollArea = clone.querySelector('.content-scroll-area');
+       // === 5. LÓGICA DE ANEXOS (Tabela Superior) ===
+const listaAnexos = clone.querySelector('#listaAnexosDetalhada');
+const countAnexos = clone.querySelector('#countAnexos');
+let totalAnexos = 0;
+
+if (listaAnexos) {
+    listaAnexos.innerHTML = ''; 
+
+    mensagens.forEach(msg => {
+        // Se a mensagem (seja de quem for) tiver anexo...
+        if (msg.anexo && msg.anexo.length > 50) {
+            totalAnexos++;
+            const dataAnexo = new Date(msg.data).toLocaleDateString('pt-BR');
+            
+            // Onde está msg.autor, altere para msg.autor_display
+listaAnexos.innerHTML += `
+    <tr style="border-bottom: 1px solid #f1f5f9;">
+        <td style="padding: 10px;">
+            <a href="${msg.anexo}" download="anexo_${msg.id}" style="color: #2563eb; text-decoration: none; font-weight: 600; font-size: 13px;">
+                <i class="far fa-file-alt"></i> Ver Anexo #${msg.id}
+            </a>
+        </td>
+        <td style="padding: 10px; color: #64748b; font-size: 13px;">---</td>
+        <td style="padding: 10px; color: #64748b; font-size: 13px;">${dataAnexo}</td>
+        <td style="padding: 10px; color: #1e293b; font-size: 13px; font-weight: 500;">${msg.autor_display}</td>
+    </tr>
+`;
+        }
+    });
+
+    if (countAnexos) countAnexos.innerText = totalAnexos;
+}
+
+        // Agora montamos o ChatHTML usando a mesma lógica de verificação
+        const scrollArea = clone.querySelector('.content-scroll-area');
+       // === 6. MONTAGEM DO HISTÓRICO (Chat Universal com Anexo) ===
+// === 6. MONTAGEM DO HISTÓRICO (Chat Universal com Nome e Anexo) ===
 const chatHTML = `
     <div class="conversation-container" style="margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
         <h5 style="margin-bottom: 15px; color: #1e293b;">Histórico de Interações</h5>
         <div class="chat-flow">
             ${mensagens.length > 0 ? mensagens.map(msg => {
                 
-                // --- Lógica do Horário ---
                 const dataObjeto = new Date(msg.data);
                 const dataFormat = dataObjeto.toLocaleDateString('pt-BR');
-                const horaFormat = dataObjeto.toLocaleTimeString('pt-BR', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                });
-                // -------------------------
+                const horaFormat = dataObjeto.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-                return `
-                    <div class="interaction-card" style="border-left: 4px solid ${msg.autor === usuarioAtivo.email ? '#2563eb' : '#10b981'}; margin-bottom: 12px; padding: 10px; background: #f8fafc; border-radius: 6px;">
-                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
-                            <strong>${msg.autor}</strong>
-                            <span style="color: #64748b;">${dataFormat} às ${horaFormat}</span>
-                        </div>
-                        <p style="margin: 0; font-size: 13px;">${msg.texto}</p>
-                    </div>
-                `;
-            }).join('') : '<p style="text-align: center; color: #94a3b8; font-size: 13px;">Nenhuma mensagem ainda.</p>'}
+                // A COR DO BALÃO: azul se for o meu e-mail, verde se for do suporte/admin
+                const ehMinhaMensagem = msg.email_autor === usuarioAtivo.email;
+                const corBorda = ehMinhaMensagem ? '#2563eb' : '#10b981';
+
+                const temAnexo = msg.anexo && msg.anexo.length > 50; 
+                
+                // ... dentro do mensagens.map(msg => {
+const htmlAnexoMsg = temAnexo ? `
+    <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e2e8f0;">
+        <a href="${msg.anexo}" download="anexo_${msg.id}" 
+           style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; color: #1e293b; font-size: 12px; text-decoration: none; font-weight: 500; transition: all 0.2s;">
+            <i class="fas fa-paperclip" style="color: #2563eb;"></i> 
+            Baixar arquivo enviado por ${msg.autor_display.split(' ')[0]}
+        </a>
+    </div>
+` : '';
+
+return `
+    <div class="interaction-card ${msg.email_autor === usuarioAtivo.email ? 'msg-me' : 'msg-other'}">
+        <div class="msg-header">
+            <strong style="font-size: 12px; color: #1e293b;">${msg.autor_display}</strong>
+            <span style="font-size: 10px; color: #94a3b8;">${dataFormat} às ${horaFormat}</span>
+        </div>
+        <p style="margin: 0; font-size: 14px; color: #334155; line-height: 1.4;">${msg.texto}</p>
+        ${htmlAnexoMsg}
+    </div>
+`;
+
+            }).join('') : '<p style="color: #64748b; font-style: italic;">Nenhuma interação registrada ainda.</p>'}
         </div>
     </div>
 `;
 
         if (scrollArea) scrollArea.insertAdjacentHTML('beforeend', chatHTML);
 
-        // 6. Inserimos a nova linha logo abaixo da linha clicada
+        // 7. FINALIZAÇÃO: Insere na tabela e configura o botão responder
         rowAtual.after(clone);
 
-        // 7. Configura o botão de enviar resposta dentro do chat que acabou de abrir
         const btnResponder = document.querySelector('.btn-reply-send');
         if (btnResponder) {
             btnResponder.onclick = () => enviarRespostaCliente(id);
@@ -330,7 +379,7 @@ const chatHTML = `
 
     } catch (error) {
         console.error("Erro ao carregar interação:", error);
-        alert("Não foi possível carregar o histórico deste chamado.");
+        alert("Não foi possível carregar o histórico.");
     }
 }
 
@@ -422,12 +471,22 @@ function baixarAnexo(base64, nome) {
     a.click();
 }
 
-function excluirTicket(id) {
-    if (confirm("Deseja excluir este ticket?")) {
-        let lista = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
-        lista = lista.filter(t => t.id !== id);
-        localStorage.setItem('tickets_gesistec', JSON.stringify(lista));
-        carregarTickets();
+async function excluirTicket(id) {
+    if (confirm("Deseja realmente excluir este chamado do banco de dados?")) {
+        try {
+            const response = await fetch(`http://localhost:3000/api/tickets/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                alert("Ticket excluído!");
+                carregarTickets(); // Recarrega a tabela
+            } else {
+                alert("Erro ao excluir do servidor.");
+            }
+        } catch (error) {
+            console.error("Erro:", error);
+        }
     }
 }
 
