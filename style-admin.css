@@ -481,3 +481,25 @@ close-btn { background: #f1f5f9; border: none; width: 32px; height: 32px; border
 }
 
 
+/* Container das novas barras */
+.chart-bars-content-modern {
+    padding: 20px 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* Efeito de hover nos cards de gráfico */
+.modern-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.modern-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+}
+
+/* Animação da barra preenchendo */
+.bar-fill {
+    transition: width 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
