@@ -18,22 +18,17 @@ document.getElementById('formTicket').onsubmit = function(e) {
     e.preventDefault();
 
     const assunto = document.getElementById('assunto').value;
-    const tipo = document.getElementById('tipo').value;
+    const tipoSelecionado = document.getElementById('tipo').value; // Valor 1, 2 ou 3
     const prioridade = document.getElementById('prioridade').value;
     const descricao = document.getElementById('descricao').value;
     const anexoInput = document.getElementById('anexoTicket');
 
     const novoTicket = {
-        id: Math.floor(1000 + Math.random() * 9000), // Gera ID 4 dígitos
         assunto: assunto,
-        tipo: tipo,
+        tipo: tipoSelecionado, 
         prioridade: prioridade,
         descricao: descricao,
-        status: 'Pendente',
-        dataCriacao: new Date().toISOString(),
         emailCliente: usuarioAtivo.email,
-        clienteNome: usuarioAtivo.nome,
-        mensagens: [],
         anexos: []
     };
 
@@ -43,11 +38,7 @@ document.getElementById('formTicket').onsubmit = function(e) {
         const reader = new FileReader();
         reader.onload = function(event) {
             novoTicket.anexos.push({
-                nome: file.name,
-                tamanho: (file.size / 1024).toFixed(2) + " KB",
-                conteudo: event.target.result,
-                data: new Date().toISOString(),
-                usuario: usuarioAtivo.nome
+                conteudo: event.target.result // Base64
             });
             finalizarCriacao(novoTicket);
         };
@@ -58,15 +49,12 @@ document.getElementById('formTicket').onsubmit = function(e) {
 };
 
 async function finalizarCriacao(ticket) {
-    // 1. Tradução: O banco espera NRO_TIPO (Inteiro) e o front manda texto
-    const mapaTipos = { 'Erro': 1, 'Melhoria': 2, 'Dúvida': 3 };
-    
-    // 2. Montamos o pacote exatamente como o server.js espera (req.body)
+    // Montamos o pacote conforme o server.js espera
     const dadosParaEnviar = {
         assunto: ticket.assunto,
         prioridade: ticket.prioridade,
-        login: ticket.emailCliente, // O server.js espera 'login' para DES_LOGIN
-        tipo_id: mapaTipos[ticket.tipo] || 1, // Converte texto para ID numérico
+        login: ticket.emailCliente, 
+        tipo_id: ticket.tipo, // Corrigido de ticket,tipo para ticket.tipo
         anexo: ticket.anexos.length > 0 ? ticket.anexos[0].conteudo : null
     };
 
@@ -79,11 +67,10 @@ async function finalizarCriacao(ticket) {
 
         if (response.ok) {
             fecharModal();
-            alert("Chamado aberto com sucesso no MySQL!");
-            carregarTickets(); // Implementaremos a busca do banco abaixo
+            alert("Chamado aberto com sucesso!");
+            carregarTickets(); 
         } else {
             const erro = await response.json();
-            // Agora o alert vai mostrar o erro real do MySQL (ex: coluna faltando)
             alert("Erro no Banco: " + (erro.error || erro.message));
         }
     } catch (error) {
@@ -92,49 +79,7 @@ async function finalizarCriacao(ticket) {
 }
 
 /**
- * Salva as alterações de Prioridade e Status feitas dentro do chat expandido.
- */
-function salvarEdicaoInline() {
-    if (!ticketAbertoId) {
-        alert("Erro: Nenhum ticket identificado para atualização.");
-        return;
-    }
-
-    const lista = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
-    const index = lista.findIndex(t => t.id === ticketAbertoId);
-
-    if (index === -1) {
-        alert("Erro: Ticket não encontrado no banco de dados.");
-        return;
-    }
-
-    // Captura os novos valores dos seletores <select>
-    const novaPrioridade = document.getElementById('editPrio').value;
-    const novoStatus = document.getElementById('editStatus').value;
-
-    // Atualiza o objeto na lista
-    lista[index].prioridade = novaPrioridade;
-    lista[index].status = novoStatus;
-
-    // Persiste no localStorage
-    localStorage.setItem('tickets_gesistec', JSON.stringify(lista));
-
-    alert("Ticket #" + ticketAbertoId + " atualizado com sucesso!");
-
-    // Atualiza a tabela principal (badges) e mantém o chat aberto com os novos dados
-    carregarTickets(); 
-    
-    // Opcional: Atualiza o texto de status na barra lateral do chat sem fechar
-    const statusTitleSide = document.querySelector('.status-title-side');
-    const priorityDisplay = document.querySelector('#displayPrioridade');
-    if (statusTitleSide) statusTitleSide.innerText = novoStatus;
-    if (priorityDisplay) priorityDisplay.innerText = novaPrioridade;
-}
-/**
- * Captura o arquivo selecionado e gera um preview
- */
-/**
- * Captura o arquivo selecionado e o prepara para envio junto com a resposta.
+ * Chat e Interação
  */
 function prepararAnexo(input) {
     const file = input.files[0];
@@ -142,31 +87,22 @@ function prepararAnexo(input) {
 
     const reader = new FileReader();
     reader.onload = function(e) {
-        // Armazena os dados do anexo na variável global temporária
-        anexoTemporario = {
-            nome: file.name,
-            conteudo: e.target.result // Base64 para gravação no banco
-        };
-        // Atualiza o nome do arquivo no preview ao lado do botão
+        anexoTemporario = { nome: file.name, conteudo: e.target.result };
         const preview = document.getElementById('file-preview-name');
         if (preview) preview.innerText = "📎 " + file.name;
     };
     reader.readAsDataURL(file);
 }
 
-/**
- * Envia a resposta de texto e o anexo para o banco de dados MySQL.
- */
 async function enviarRespostaCliente(ticketId) {
     const campoTexto = document.getElementById('reply-text');
     const texto = campoTexto ? campoTexto.value : "";
 
-    // Impede o envio se não houver texto nem anexo
     if (!texto.trim() && !anexoTemporario) return;
 
     const payload = {
         ticket_id: ticketId,
-        autor: usuarioAtivo.email, // Identifica quem está enviando
+        autor: usuarioAtivo.email,
         texto: texto,
         anexo_conteudo: anexoTemporario ? anexoTemporario.conteudo : null
     };
@@ -179,235 +115,107 @@ async function enviarRespostaCliente(ticketId) {
         });
 
         if (response.ok) {
-            // 1. Limpa os campos de entrada após o sucesso
             if (campoTexto) campoTexto.value = "";
             anexoTemporario = null;
-            const preview = document.getElementById('file-preview-name');
-            if (preview) preview.innerText = "";
-
-            // 2. Atualiza o Histórico de Interações sem fechar a aba
-            // Localiza o botão original na tabela para disparar o refresh da aba aberta
+            if (document.getElementById('file-preview-name')) document.getElementById('file-preview-name').innerText = "";
+            
             const btnRef = document.querySelector(`button[onclick*="irParaInteracao(${ticketId}"]`);
-            if (btnRef) {
-                // Chama a função de abertura com 'true' para forçar apenas o recarregamento dos dados
-                irParaInteracao(ticketId, btnRef, true); 
-            }
-        } else {
-            alert("Erro ao salvar sua resposta no servidor.");
+            if (btnRef) irParaInteracao(ticketId, btnRef, true); 
         }
     } catch (error) {
-        console.error("Erro na comunicação:", error);
-        alert("Não foi possível conectar ao servidor para enviar a resposta.");
+        alert("Não foi possível enviar a resposta.");
     }
 }
 
-// --- Gestão do Modal ---
-function abrirModal() {
-    document.getElementById('modalTicket').style.display = 'block';
-}
-
-function fecharModal() {
-    document.getElementById('modalTicket').style.display = 'none';
-    document.getElementById('formTicket').reset();
-}
-
-/**
- * Formata data ISO para PT-BR
- */
-function formatarDataReferencia(dataISO) {
-    if (!dataISO || dataISO === "undefined") return "Data não informada";
-    const data = new Date(dataISO);
-    if (isNaN(data.getTime())) return dataISO; 
-    
-    return data.toLocaleDateString('pt-BR', {
-        day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-    });
-}
-
-/**
- * Fecha a área de interação expandida (in-line) e reseta o controle global.
- * @param {HTMLElement} btn - O botão que foi clicado.
- */
-function fecharInline(btn) {
-    // Busca o elemento pai 'tr' que tem a classe da linha de interação
-    const row = btn.closest('.row-interacao');
-    
-    if (row) {
-        row.remove(); // Remove a linha da tabela fisicamente
-    }
-
-    // Importante: Reseta o ID global para que o sistema saiba que 
-    // agora é possível abrir este ou outro ticket novamente.
-    ticketAbertoId = null;
-}
-/**
- * Abre a área de interação (chat) buscando dados do MySQL
- */
 async function irParaInteracao(id, btn, forcarAbertura = false) {
     const existingRow = document.querySelector('.row-interacao');
-
-    // Se clicar no mesmo ID e já estiver aberto, fecha
     if (ticketAbertoId === id && !forcarAbertura) {
         if (existingRow) existingRow.remove();
         ticketAbertoId = null;
         return;
     }
-
     if (existingRow) existingRow.remove();
     ticketAbertoId = id;
 
     try {
-        // 1. Buscamos o histórico de mensagens do banco de dados
         const response = await fetch(`http://localhost:3000/api/mensagens/${id}`);
         const mensagens = await response.json();
 
-        // 2. Precisamos dos dados básicos do ticket (assunto, etc)
-        // Como já carregamos a lista, podemos buscar no array local que criamos no carregarTickets
-        // Ou, se preferir, usar os dados da linha da tabela
         const rowAtual = btn.closest('tr');
         const assunto = rowAtual.cells[2].innerText;
         const status = rowAtual.cells[4].innerText;
 
-        // 3. Pegamos o template do HTML e clonamos
         const template = document.getElementById('templateInteracao');
-        if (!template) {
-            console.error("Template 'templateInteracao' não encontrado no HTML!");
-            return;
-        }
         const clone = template.content.cloneNode(true);
 
-        // 4. Preenchemos os metadados do cabeçalho do chat
         clone.querySelector('#ticketIdDisplay').innerText = id;
         clone.querySelector('#descDoc').innerText = assunto;
         clone.querySelector('#solicitanteDoc').innerText = usuarioAtivo.email;
-        
-        const statusSide = clone.querySelector('.status-title-side');
-        // ... (seu código anterior para aqui)
-       // ... (seu código anterior)
-        if(statusSide) statusSide.innerText = status;
+        if(clone.querySelector('.status-title-side')) clone.querySelector('.status-title-side').innerText = status;
 
-       // === 5. LÓGICA DE ANEXOS (Tabela Superior) ===
-const listaAnexos = clone.querySelector('#listaAnexosDetalhada');
-const countAnexos = clone.querySelector('#countAnexos');
-let totalAnexos = 0;
-
-if (listaAnexos) {
-    listaAnexos.innerHTML = ''; 
-
-    mensagens.forEach(msg => {
-        // Se a mensagem (seja de quem for) tiver anexo...
-        if (msg.anexo && msg.anexo.length > 50) {
-            totalAnexos++;
-            const dataAnexo = new Date(msg.data).toLocaleDateString('pt-BR');
-            
-            // Onde está msg.autor, altere para msg.autor_display
-listaAnexos.innerHTML += `
-    <tr style="border-bottom: 1px solid #f1f5f9;">
-        <td style="padding: 10px;">
-            <a href="${msg.anexo}" download="anexo_${msg.id}" style="color: #2563eb; text-decoration: none; font-weight: 600; font-size: 13px;">
-                <i class="far fa-file-alt"></i> Ver Anexo #${msg.id}
-            </a>
-        </td>
-        <td style="padding: 10px; color: #64748b; font-size: 13px;">---</td>
-        <td style="padding: 10px; color: #64748b; font-size: 13px;">${dataAnexo}</td>
-        <td style="padding: 10px; color: #1e293b; font-size: 13px; font-weight: 500;">${msg.autor_display}</td>
-    </tr>
-`;
+        // Lógica de Anexos na Tabela
+        const listaAnexos = clone.querySelector('#listaAnexosDetalhada');
+        let totalAnexos = 0;
+        if (listaAnexos) {
+            listaAnexos.innerHTML = ''; 
+            mensagens.forEach(msg => {
+                if (msg.anexo && msg.anexo.length > 50) {
+                    totalAnexos++;
+                    listaAnexos.innerHTML += `
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px;"><a href="${msg.anexo}" download="anexo" style="color:#2563eb; font-weight:600;">Ver Anexo</a></td>
+                            <td style="padding: 10px;">---</td>
+                            <td style="padding: 10px;">${new Date(msg.data).toLocaleDateString('pt-BR')}</td>
+                            <td style="padding: 10px;">${msg.autor_display}</td>
+                        </tr>`;
+                }
+            });
+            if (clone.querySelector('#countAnexos')) clone.querySelector('#countAnexos').innerText = totalAnexos;
         }
-    });
 
-    if (countAnexos) countAnexos.innerText = totalAnexos;
-}
+        // Chat HTML
+        const chatHTML = `
+            <div class="conversation-container">
+                <div class="chat-flow">
+                    ${mensagens.map(msg => `
+                        <div class="interaction-card ${msg.email_autor === usuarioAtivo.email ? 'msg-me' : 'msg-other'}">
+                            <div class="msg-header">
+                                <strong>${msg.autor_display}</strong>
+                                <span>${new Date(msg.data).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</span>
+                            </div>
+                            <p>${msg.texto}</p>
+                            ${msg.anexo && msg.anexo.length > 50 ? `<a href="${msg.anexo}" download>📎 Baixar Arquivo</a>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
 
-        // Agora montamos o ChatHTML usando a mesma lógica de verificação
-        const scrollArea = clone.querySelector('.content-scroll-area');
-       // === 6. MONTAGEM DO HISTÓRICO (Chat Universal com Anexo) ===
-// === 6. MONTAGEM DO HISTÓRICO (Chat Universal com Nome e Anexo) ===
-const chatHTML = `
-    <div class="conversation-container" style="margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
-        <h5 style="margin-bottom: 15px; color: #1e293b;">Histórico de Interações</h5>
-        <div class="chat-flow">
-            ${mensagens.length > 0 ? mensagens.map(msg => {
-                
-                const dataObjeto = new Date(msg.data);
-                const dataFormat = dataObjeto.toLocaleDateString('pt-BR');
-                const horaFormat = dataObjeto.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-                // A COR DO BALÃO: azul se for o meu e-mail, verde se for do suporte/admin
-                const ehMinhaMensagem = msg.email_autor === usuarioAtivo.email;
-                const corBorda = ehMinhaMensagem ? '#2563eb' : '#10b981';
-
-                const temAnexo = msg.anexo && msg.anexo.length > 50; 
-                
-                // ... dentro do mensagens.map(msg => {
-const htmlAnexoMsg = temAnexo ? `
-    <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e2e8f0;">
-        <a href="${msg.anexo}" download="anexo_${msg.id}" 
-           style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; color: #1e293b; font-size: 12px; text-decoration: none; font-weight: 500; transition: all 0.2s;">
-            <i class="fas fa-paperclip" style="color: #2563eb;"></i> 
-            Baixar arquivo enviado por ${msg.autor_display.split(' ')[0]}
-        </a>
-    </div>
-` : '';
-
-return `
-    <div class="interaction-card ${msg.email_autor === usuarioAtivo.email ? 'msg-me' : 'msg-other'}">
-        <div class="msg-header">
-            <strong style="font-size: 12px; color: #1e293b;">${msg.autor_display}</strong>
-            <span style="font-size: 10px; color: #94a3b8;">${dataFormat} às ${horaFormat}</span>
-        </div>
-        <p style="margin: 0; font-size: 14px; color: #334155; line-height: 1.4;">${msg.texto}</p>
-        ${htmlAnexoMsg}
-    </div>
-`;
-
-            }).join('') : '<p style="color: #64748b; font-style: italic;">Nenhuma interação registrada ainda.</p>'}
-        </div>
-    </div>
-`;
-
-        if (scrollArea) scrollArea.insertAdjacentHTML('beforeend', chatHTML);
-
-        // 7. FINALIZAÇÃO: Insere na tabela e configura o botão responder
+        clone.querySelector('.content-scroll-area').insertAdjacentHTML('beforeend', chatHTML);
         rowAtual.after(clone);
-
-        const btnResponder = document.querySelector('.btn-reply-send');
-        if (btnResponder) {
-            btnResponder.onclick = () => enviarRespostaCliente(id);
-        }
+        document.querySelector('.btn-reply-send').onclick = () => enviarRespostaCliente(id);
 
     } catch (error) {
-        console.error("Erro ao carregar interação:", error);
-        alert("Não foi possível carregar o histórico.");
+        alert("Erro ao carregar histórico.");
     }
 }
 
-// --- Funções de Auxílio e Dashboard ---
-
+/**
+ * Listagem de Tickets do Banco
+ */
 async function carregarTickets() {
     try {
         const response = await fetch(`http://localhost:3000/api/tickets?login=${usuarioAtivo.email}`);
         const chamadosDoBanco = await response.json();
 
-        // Verificação de segurança: se não for um Array, deu erro no servidor
-        if (!Array.isArray(chamadosDoBanco)) {
-            console.error("Servidor retornou erro:", chamadosDoBanco);
-            return;
-        }
-
-        const meusChamados = chamadosDoBanco.map(ticket => {
-            // ... sua lógica de tradução (prioTraduzida, statusTraduzido, etc) ...
-            return {
-                id: ticket.id,
-                assunto: ticket.assunto,
-                tipo: ticket.nro_tipo === 1 ? 'Erro' : (ticket.nro_tipo === 2 ? 'Melhoria' : 'Dúvida'),
-                prioridade: ticket.prioridade === 'A' ? 'Alta' : (ticket.prioridade === 'M' ? 'Média' : 'Baixa'),
-                status: ticket.status === 'A' ? 'Pendente' : 'Finalizado',
-                dataCriacao: ticket.data,
-                emailCliente: ticket.usuario
-            };
-        });
+        const meusChamados = chamadosDoBanco.map(ticket => ({
+            id: ticket.id,
+            assunto: ticket.assunto,
+            tipo: ticket.nro_tipo === 1 ? 'Erro' : (ticket.nro_tipo === 3 ? 'Melhoria' : 'Dúvida'), // Ajustado para bater com seu HTML
+            prioridade: ticket.prioridade === 'A' ? 'Alta' : (ticket.prioridade === 'M' ? 'Média' : 'Baixa'),
+            status: ticket.status === 'A' ? 'Pendente' : 'Finalizado',
+            dataCriacao: ticket.data,
+            usuario: ticket.email_usuario
+        }));
 
         renderizarLista(meusChamados);
     } catch (error) {
@@ -418,105 +226,34 @@ async function carregarTickets() {
 function renderizarLista(ticketsParaExibir) {
     const tabela = document.getElementById('tabelaTickets');
     if(!tabela) return;
-    tabela.innerHTML = '';
-
-    if (ticketsParaExibir.length === 0) {
-        tabela.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem;">Nenhum chamado encontrado.</td></tr>';
-        return;
-    }
-
-    ticketsParaExibir.forEach(ticket => {
-        const statusClass = ticket.status === 'Pendente' ? 'pendente' : 'finalizado';
-        const tipoClass = ticket.tipo === 'Erro' ? 'type-erro' : 
-                          ticket.tipo === 'Melhoria' ? 'type-melhoria' : 'type-duvida';
-
-        // ... dentro da sua função renderizarLista(ticketsParaExibir) ...
-tabela.innerHTML += `
-    <tr>
-        <td><strong>#${ticket.id}</strong></td>
-        <td><span class="type-badge ${tipoClass}">${ticket.tipo || 'Geral'}</span></td>
-        <td>${ticket.assunto}</td>
-        <td>${ticket.prioridade}</td>
-        <td><span class="badge ${statusClass}">${ticket.status}</span></td>
-        <td>
-            <!-- O botão que abre a interação -->
-            <button onclick="irParaInteracao(${ticket.id}, this)" class="btn-edit">
-                <i class="fas fa-external-link-alt"></i>
-            </button>
-            <button onclick="excluirTicket(${ticket.id})" class="btn-delete">
-                <i class="fas fa-trash"></i>
-            </button>
-        </td>
-    </tr>
-`;
-    });
-}
-
-
-function calcularSLA(dataISO) {
-    if (!dataISO) return "0min";
-    const diffMs = new Date() - new Date(dataISO);
-    const totalMinutos = Math.floor(diffMs / 60000);
-    const totalHoras = Math.floor(totalMinutos / 60);
-
-    if (totalHoras < 1) return `${totalMinutos}min`;
-    if (totalHoras < 24) return `${totalHoras}h ${totalMinutos % 60}min`;
-    return `${Math.floor(totalHoras / 24)}d ${totalHoras % 24}h`;
-}
-
-function baixarAnexo(base64, nome) {
-    const a = document.createElement("a");
-    a.href = base64;
-    a.download = nome;
-    a.click();
+    tabela.innerHTML = ticketsParaExibir.map(ticket => `
+        <tr>
+            <td><strong>#${ticket.id}</strong></td>
+            <td><span class="type-badge ${ticket.tipo.toLowerCase()}">${ticket.tipo}</span></td>
+            <td>${ticket.assunto}</td>
+            <td>${ticket.prioridade}</td>
+            <td><span class="badge ${ticket.status === 'Pendente' ? 'pendente' : 'finalizado'}">${ticket.status}</span></td>
+            <td>
+                <button onclick="irParaInteracao(${ticket.id}, this)" class="btn-edit"><i class="fas fa-external-link-alt"></i></button>
+                <button onclick="excluirTicket(${ticket.id})" class="btn-delete"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
 }
 
 async function excluirTicket(id) {
-    if (confirm("Deseja realmente excluir este chamado do banco de dados?")) {
-        try {
-            const response = await fetch(`http://localhost:3000/api/tickets/${id}`, {
-                method: 'DELETE'
-            });
-
-            if (response.ok) {
-                alert("Ticket excluído!");
-                carregarTickets(); // Recarrega a tabela
-            } else {
-                alert("Erro ao excluir do servidor.");
-            }
-        } catch (error) {
-            console.error("Erro:", error);
-        }
+    if (!confirm("Deseja realmente excluir este chamado?")) return;
+    try {
+        const response = await fetch(`http://localhost:3000/api/tickets/${id}`, { method: 'DELETE' });
+        if (response.ok) carregarTickets();
+    } catch (error) {
+        alert("Erro ao excluir.");
     }
 }
 
+// Auxiliares Modal
+function abrirModal() { document.getElementById('modalTicket').style.display = 'block'; }
+function fecharModal() { document.getElementById('modalTicket').style.display = 'none'; document.getElementById('formTicket').reset(); }
+function logout() { localStorage.removeItem('sessao_ativa'); window.location.href = 'index.html'; }
 
-/**
- * ESCUTA EM TEMPO REAL:
- * Atualiza a tela do cliente se o Admin fizer alterações em outra aba.
- */
-window.addEventListener('storage', (event) => {
-    if (event.key === 'tickets_gesistec') {
-        console.log("Detectada atualização nos tickets...");
-        
-        // 1. Atualiza a tabela principal (badges e status)
-        carregarTickets();
-
-        // 2. Se o usuário estiver com um chat aberto, recarrega o conteúdo dele
-        if (ticketAbertoId) {
-            const btnRef = document.querySelector(`button[onclick*="irParaInteracao(${ticketAbertoId}"]`);
-            if (btnRef) {
-                // Passamos 'true' para não fechar o ticket, apenas atualizar o conteúdo
-                irParaInteracao(ticketAbertoId, btnRef, true);
-            }
-        }
-    }
-});
-
-function logout() {
-    localStorage.removeItem('sessao_ativa');
-    window.location.href = 'index.html';
-}
-
-// Inicialização automática
 carregarTickets();
