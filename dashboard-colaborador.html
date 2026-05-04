@@ -39,6 +39,7 @@
 
         <main class="content">
             
+            <!-- VIEW: DASHBOARD -->
             <div id="dashboardView" class="view-section">
                 <header class="content-header">
                     <div class="header-title-row">
@@ -53,6 +54,37 @@
                     </div>
                 </header>
 
+                <!-- BARRA DE FILTROS DINÂMICOS -->
+                <section class="filter-container-modern" style="background: #fff; padding: 20px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); display: flex; gap: 25px; align-items: flex-end;">
+                    <div class="filter-group" style="flex: 1;">
+                        <label style="display: block; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
+                            <i class="fas fa-filter"></i> Filtrar por Tipo
+                        </label>
+                        <select id="filterTipo" onchange="aplicarFiltros()" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; color: #1e293b; font-weight: 500; outline: none;">
+                            <option value="todos">Todos os Tipos</option>
+                            <option value="Erro">Erro</option>
+                            <option value="Dúvida">Dúvida</option>
+                            <option value="Melhoria">Melhoria</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group" style="flex: 1;">
+                        <label style="display: block; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
+                            <i class="fas fa-signal"></i> Filtrar por Status
+                        </label>
+                        <select id="filterStatus" onchange="aplicarFiltros()" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; color: #1e293b; font-weight: 500; outline: none;">
+                            <option value="todos">Todos os Status</option>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Em Atendimento">Em Atendimento</option>
+                            <option value="Finalizado">Finalizado</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-info" style="flex: 2; padding-bottom: 10px; color: #94a3b8; font-size: 12px; font-style: italic;">
+                        * O contador e os gráficos são atualizados em tempo real conforme sua seleção.
+                    </div>
+                </section>
+
                 <section class="dashboard-metrics">
                     <div class="metric-card"><span>Tickets vencidos</span><h3 id="countVencidos" class="metric-value red">0</h3></div>
                     <div class="metric-card"><span>Vencendo hoje</span><h3 id="countVencendoHoje" class="metric-value orange">0</h3></div>
@@ -63,84 +95,92 @@
                 </section>
 
                 <section class="charts-grid">
-                    <div class="chart-container">
-                        <div class="chart-header"><span>Prioridade</span><i class="fas fa-ellipsis-v"></i></div>
+                    <div class="chart-container modern-card">
+                        <div class="chart-header">
+                            <span><i class="fas fa-exclamation-circle"></i> Volumetria por Prioridade</span>
+                            <i class="fas fa-ellipsis-v"></i>
+                        </div>
                         <div class="chart-canvas-wrapper"><canvas id="chartPrioridade"></canvas></div>
                     </div>
-                    <div class="chart-container">
-                        <div class="chart-header"><span>Status</span><i class="fas fa-ellipsis-v"></i></div>
+                    <div class="chart-container modern-card">
+                        <div class="chart-header">
+                            <span><i class="fas fa-tasks"></i> Status da Operação</span>
+                            <i class="fas fa-ellipsis-v"></i>
+                        </div>
                         <div class="chart-canvas-wrapper"><canvas id="chartStatus"></canvas></div>
                     </div>
-                    <div class="chart-container">
-                        <div class="chart-header"><span>Novos tickets</span><i class="fas fa-ellipsis-v"></i></div>
-                        <div id="barChartContainer" class="chart-bars-content"></div>
+                    <div class="chart-container modern-card">
+                        <div class="chart-header">
+                            <span><i class="fas fa-chart-bar"></i> Carga de Trabalho (SLA)</span>
+                            <i class="fas fa-ellipsis-v"></i>
+                        </div>
+                        <div id="barChartContainer" class="chart-bars-content-modern" style="padding: 15px;">
+                            <!-- Injetado pelo JS -->
+                        </div>
                     </div>
                 </section>
             </div>
 
-           <div id="ticketsSection" class="view-section" style="display: none;">
-    <header class="content-header">
-        <h2>Gestão de Atendimentos</h2>
-        <p>Gerencie as solicitações de todos os clientes.</p>
-    </header>
+            <!-- VIEW: ATENDIMENTO -->
+            <div id="ticketsSection" class="view-section" style="display: none;">
+                <header class="content-header">
+                    <h2>Gestão de Atendimentos</h2>
+                    <p>Gerencie as solicitações de todos os clientes.</p>
+                </header>
 
-    <!-- Este container vai segurar o Chat + Caixa de Resposta -->
-    <div id="containerInteracaoAdmin" style="display:none; margin-bottom: 30px;">
-        <div id="historicoChatAdmin"></div> <!-- O chat vai carregar aqui -->
-        
-        <!-- Sua caixa de resposta modernizada agora fica aqui embaixo -->
-        <div id="areaRespostaAdmin" class="reply-card-modern">
-            <div class="reply-header">
-                <div class="ticket-info">
-                    <i class="fas fa-reply-all"></i>
-                    <span>Sua Resposta para o Chamado <strong>#<span id="idTicketResponder"></span></strong></span>
-                </div>
-                <button onclick="fecharAreaResposta()" class="btn-back-modern">
-                    <i class="fas fa-arrow-left"></i>
-                    <span>Voltar para a Fila</span>
-                </button>
-            </div>
-
-            <div class="reply-body">
-                <textarea id="textoRespostaAdmin" class="reply-textarea" placeholder="Digite aqui a solução técnica detalhada..."></textarea>
-                <div class="reply-footer">
-                    <div class="attachment-area">
-                        <input type="file" id="anexoAdminInput" style="display:none" onchange="prepararAnexoAdmin(this)">
-                        <button class="btn-attach-modern" onclick="document.getElementById('anexoAdminInput').click()">
-                            <i class="fas fa-paperclip"></i> Anexar Documento
-                        </button>
-                        <span id="preview-anexo-admin" class="file-name-preview"></span>
+                <div id="containerInteracaoAdmin" style="display:none; margin-bottom: 30px;">
+                    <div id="historicoChatAdmin"></div>
+                    <div id="areaRespostaAdmin" class="reply-card-modern">
+                        <div class="reply-header">
+                            <div class="ticket-info">
+                                <i class="fas fa-reply-all"></i>
+                                <span>Sua Resposta para o Chamado <strong>#<span id="idTicketResponder"></span></strong></span>
+                            </div>
+                            <button onclick="fecharAreaResposta()" class="btn-back-modern">
+                                <i class="fas fa-arrow-left"></i> Voltar para a Fila
+                            </button>
+                        </div>
+                        <div class="reply-body">
+                            <textarea id="textoRespostaAdmin" class="reply-textarea" placeholder="Digite aqui a solução técnica detalhada..."></textarea>
+                            <div class="reply-footer">
+                                <div class="attachment-area">
+                                    <input type="file" id="anexoAdminInput" style="display:none" onchange="prepararAnexoAdmin(this)">
+                                    <button class="btn-attach-modern" onclick="document.getElementById('anexoAdminInput').click()">
+                                        <i class="fas fa-paperclip"></i> Anexar Documento
+                                    </button>
+                                    <span id="preview-anexo-admin" class="file-name-preview"></span>
+                                </div>
+                                <button class="btn-send-modern" onclick="enviarRespostaAdmin()">
+                                    <span>Enviar Resposta</span> <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <button class="btn-send-modern" onclick="enviarRespostaAdmin()">
-                        <span>Enviar Resposta</span>
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
+                </div>
+
+                <div class="card table-card" id="cardTabelaTickets">
+                    <div class="table-header"><h3>Fila de Chamados Recentes</h3></div>
+                    <div class="table-responsive">
+                        <table class="ticket-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Cliente</th>
+                                    <th>Tipo</th>
+                                    <th>Assunto</th>
+                                    <th>Data</th>
+                                    <th>Prioridade</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ticketsByClientList"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Tabela de Tickets (Sempre visível até abrir um chamado) -->
-    <div class="card table-card" id="cardTabelaTickets">
-        <div class="table-header"><h3>Fila de Chamados Recentes</h3></div>
-        <div class="table-responsive">
-            <table class="ticket-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Cliente</th>
-                        <th>Assunto</th>
-                        <th>Prioridade</th>
-                        <th>Status</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="ticketsByClientList"></tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
+            <!-- VIEW: USUÁRIOS -->
             <div id="usersView" class="view-section" style="display: none;">
                 <header class="content-header">
                     <div class="header-title-row">
@@ -171,6 +211,7 @@
                 </div>
             </div>
 
+            <!-- VIEW: RELATÓRIOS -->
             <div id="reportsView" class="view-section" style="display: none;">
                 <header class="content-header">
                     <h2>Relatórios e BI</h2>
@@ -187,6 +228,7 @@
         </main>
     </div>
 
+    <!-- MODAL: USUÁRIO -->
     <div id="modalUsuario" class="modal">
         <div class="modal-content">
             <div class="modal-header">
