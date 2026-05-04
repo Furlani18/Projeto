@@ -66,31 +66,26 @@ async function carregarEstatisticas() {
         if (!Array.isArray(dadosBrutos)) return;
 
         // Mapeamento dos dados com JOIN da empresa
-        listaTicketsGlobal = dadosBrutos.map(t => ({
-            id: t.id,
-            assunto: t.assunto,
-            usuario: t.email_usuario, 
-            empresa: t.nome_empresa || "Empresa não cadastrada", 
-            status: t.status === 'A' ? 'Pendente' : (t.status === 'E' ? 'Em Atendimento' : 'Finalizado'),
-            prioridade: t.prioridade === 'A' ? 'Alta' : (t.prioridade === 'M' ? 'Média' : 'Baixa'),
-            data: t.data
-        }));
+        // Localize este trecho no app-admin.js
+listaTicketsGlobal = dadosBrutos.map(t => ({
+    id: t.id,
+    assunto: t.assunto,
+    usuario: t.email_usuario, 
+    empresa: t.nome_empresa || "Empresa não cadastrada",
+    status: t.status === 'A' ? 'Pendente' : (t.status === 'E' ? 'Em Atendimento' : 'Finalizado'),
+    prioridade: t.prioridade === 'A' ? 'Alta' : (t.prioridade === 'M' ? 'Média' : 'Baixa'),
+    data: t.data,
 
+    // TRADUÇÃO DO TIPO:
+    tipo: t.nro_tipo === 1 ? 'Erro' : (t.nro_tipo === 2 ? 'Melhoria' : 'Dúvida')
+}));
         const setMetric = (id, valor) => {
             const el = document.getElementById(id);
             if (el) el.innerText = valor;
         };
 
-        // Métricas do Dashboard
-        setMetric('countVencidos', listaTicketsGlobal.filter(t => t.prioridade === 'Alta' && t.status !== 'Finalizado').length); 
-        setMetric('countAbertos', listaTicketsGlobal.filter(t => t.status === 'Pendente').length);
-        setMetric('countEspera', listaTicketsGlobal.filter(t => t.status === 'Em Atendimento').length);
-        setMetric('countMonitorados', listaTicketsGlobal.length);
-
-        renderizarGraficosDonut(listaTicketsGlobal);
-        renderizarBarrasProgresso(listaTicketsGlobal);
-        renderizarTabelaGeral(listaTicketsGlobal);
-
+        atualizarElementosInterface(listaTicketsGlobal);
+       
     } catch (error) {
         console.error("Erro ao carregar dados do MySQL:", error);
     }
@@ -105,21 +100,46 @@ function renderizarTabelaGeral(tickets) {
 
     tabela.innerHTML = tickets.map(ticket => {
         const statusClass = ticket.status.toLowerCase().replace(/\s+/g, '-');
+        const tipoClass = ticket.tipo === 'Erro' ? 'type-erro' : 
+                         ticket.tipo === 'Melhoria' ? 'type-melhoria' : 'type-duvida';
         
+        const dataFormatada = new Date(ticket.data).toLocaleDateString('pt-BR');
+
         return `
             <tr>
+                <!-- 1. ID -->
                 <td><span style="color: #2563eb; font-weight: 800;">#${ticket.id}</span></td>
+                
+                <!-- 2. CLIENTE -->
                 <td>
                     <div style="font-weight: 700; color: #1e293b;">${ticket.empresa}</div>
                     <small style="color: #94a3b8; font-size: 11px;">${ticket.usuario}</small>
                 </td>
-                <td>${ticket.assunto}</td>
+                
+                <!-- 3. TIPO (Agora em coluna própria) -->
+                <td>
+                    <span class="type-badge ${tipoClass}">${ticket.tipo}</span>
+                </td>
+                
+                <!-- 4. ASSUNTO -->
+                <td style="color: #475569; font-size: 13px; max-width: 200px;">
+                    ${ticket.assunto}
+                </td>
+                
+                <!-- 5. DATA -->
+                <td style="color: #64748b; font-size: 13px;">${dataFormatada}</td>
+                
+                <!-- 6. PRIORIDADE -->
                 <td>
                     <span style="font-weight:600; color: ${ticket.prioridade === 'Alta' ? '#ef4444' : '#475569'};">
                         ${ticket.prioridade}
                     </span>
                 </td>
+                
+                <!-- 7. STATUS -->
                 <td><span class="badge ${statusClass}">${ticket.status}</span></td>
+                
+                <!-- 8. AÇÕES -->
                 <td>
                     <button class="btn-atender" onclick="abrirRespostaAdmin(${ticket.id})">
                         <i class="fas fa-external-link-alt"></i> Atender
@@ -308,16 +328,89 @@ function renderizarGraficosDonut(tickets) {
     }
 }
 
+/**
+ * RENDERIZAÇÃO DAS BARRAS DE PROGRESSO (Prioridade)
+ */
 function renderizarBarrasProgresso(tickets) {
     const container = document.getElementById('barChartContainer');
     if (!container) return;
+
     const total = tickets.length || 1;
-    const prios = ['Baixa', 'Média', 'Alta'];
-    container.innerHTML = prios.map(prio => {
-        const qtd = tickets.filter(t => t.prioridade === prio).length;
-        const porc = (qtd / total) * 100;
-        return `<div class="bar-item"><strong>${prio}</strong> (${qtd})<div class="bar-track"><div class="bar-fill" style="width:${porc}%"></div></div></div>`;
+    const prioridadesConfig = [
+        { label: 'Alta', cor: '#ef4444' },
+        { label: 'Média', cor: '#2563eb' },
+        { label: 'Baixa', cor: '#f97316' }
+    ];
+
+    container.innerHTML = prioridadesConfig.map(prio => {
+        const qtd = tickets.filter(t => t.prioridade === prio.label).length;
+        const porcentagem = (qtd / total) * 100;
+
+        return `
+            <div class="bar-item-modern" style="margin-bottom: 18px;">
+                <div class="bar-info" style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px;">
+                    <strong style="color: #1e293b;">${prio.label}</strong>
+                    <span style="color: #64748b; font-weight: 600;">${qtd} (${porcentagem.toFixed(0)}%)</span>
+                </div>
+                <div class="bar-track" style="background: #f1f5f9; height: 8px; border-radius: 10px; overflow: hidden;">
+                    <div class="bar-fill" style="width: ${porcentagem}%; background: ${prio.cor}; height: 100%; transition: width 0.5s ease-in-out;"></div>
+                </div>
+            </div>
+        `;
     }).join('');
+}
+
+function formatarDataSimples(dataISO) {
+    if (!dataISO) return "---";
+    const data = new Date(dataISO);
+    return data.toLocaleDateString('pt-BR'); // Formato dd/mm/aaaa
+}
+
+/**
+ * FILTRAGEM DINÂMICA DO DASHBOARD
+ */
+function aplicarFiltros() {
+    const tipoFiltro = document.getElementById('filterTipo').value;
+    const statusFiltro = document.getElementById('filterStatus').value;
+
+    // Começamos com a lista completa que veio do banco
+    let listaFiltrada = [...listaTicketsGlobal];
+
+    // Filtra por Tipo (se não for "todos")
+    if (tipoFiltro !== 'todos') {
+        listaFiltrada = listaFiltrada.filter(t => t.tipo === tipoFiltro);
+    }
+
+    // Filtra por Status (se não for "todos")
+    if (statusFiltro !== 'todos') {
+        listaFiltrada = listaFiltrada.filter(t => t.status === statusFiltro);
+    }
+
+    // AGORA: Atualiza tudo na tela usando a lista filtrada!
+    atualizarElementosInterface(listaFiltrada);
+}
+
+/**
+ * Função auxiliar para isolar a lógica de atualização visual
+ */
+function atualizarElementosInterface(dados) {
+    const setMetric = (id, valor) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = valor;
+    };
+
+    // Atualiza os Contadores (Cards)
+    setMetric('countVencidos', dados.filter(t => t.prioridade === 'Alta' && t.status !== 'Finalizado').length); 
+    setMetric('countAbertos', dados.filter(t => t.status === 'Pendente').length);
+    setMetric('countEspera', dados.filter(t => t.status === 'Em Atendimento').length);
+    setMetric('countMonitorados', dados.length);
+
+    // Atualiza os Gráficos de Donut e Barras
+    renderizarGraficosDonut(dados);
+    renderizarBarrasProgresso(dados);
+    
+    // Atualiza a Tabela Geral
+    renderizarTabelaGeral(dados);
 }
 
 function logout() {
