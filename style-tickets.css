@@ -660,32 +660,17 @@ td {
 
 /* --- Badges de Categoria (UI Cloud) --- */
 .type-badge {
-    padding: 5px 10px;
-    border-radius: 8px;
-    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 10px;
     font-weight: 800;
     text-transform: uppercase;
-    display: inline-block;
 }
 
-/* Estilização por Tipo */
-.type-erro { 
-    background: #fee2e2; 
-    color: #ef4444; 
-    border: 1px solid rgba(239, 68, 68, 0.1); 
-}
-
-.type-melhoria { 
-    background: #e0f2fe; 
-    color: #0284c7; 
-    border: 1px solid rgba(2, 132, 199, 0.1); 
-}
-
-.type-duvida { 
-    background: #fef9c3; 
-    color: #a16207; 
-    border: 1px solid rgba(161, 98, 7, 0.1); 
-}
+/* Estilos por Tipo */
+.type-erro { background: #fee2e2; color: #ef4444; }      /* Vermelho */
+.type-melhoria { background: #e0f2fe; color: #0284c7; }  /* Azul */
+.type-duvida { background: #ffedd5; color: #f97316; }    /* Laranja */
 
 .ticket-side-card {
     background: #fff;
