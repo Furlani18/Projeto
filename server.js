@@ -57,10 +57,11 @@ app.post('/api/login', (req, res) => {
 // ==========================================
 
 // LISTAR TICKETS (Agora buscando o nome da empresa)
+// BUSCAR TICKETS (Com o JOIN para pegar o prazo de dias)
 app.get('/api/tickets', (req, res) => {
     const { login } = req.query;
     
-    // SQL unindo Ticket -> Colaborador -> Empresa
+    // Adicionamos t.QTD_DIAS e o JOIN com tipo_ticket
     let sql = `
         SELECT 
             t.NRO_TICKET as id, 
@@ -70,10 +71,13 @@ app.get('/api/tickets', (req, res) => {
             t.DES_STATUS as status, 
             t.DES_PRIORIDADE as prioridade, 
             t.DAT_ABERTURA as data,
-            t.NRO_TIPO as nro_tipo
+            t.NRO_TIPO as nro_tipo,
+            tt.QTD_DIAS as prazo_dias -- <--- Pegando o prazo da tabela tipo_ticket
         FROM ticket t
         LEFT JOIN colaborador c ON t.DES_LOGIN = c.DES_LOGIN
-        LEFT JOIN empresa e ON c.NRO_EMPRESA = e.NRO_EMPRESA`;
+        LEFT JOIN empresa e ON c.NRO_EMPRESA = e.NRO_EMPRESA
+        LEFT JOIN tipo_ticket tt ON t.NRO_TIPO = tt.NRO_TIPO -- <--- Unindo as tabelas
+    `;
 
     const params = [];
     if (login) {
@@ -88,23 +92,6 @@ app.get('/api/tickets', (req, res) => {
             return res.status(500).json({ error: err.sqlMessage });
         }
         res.json(results);
-    });
-});
-
-// CRIAR TICKET (Usando as colunas reais da sua imagem)
-app.post('/api/tickets', (req, res) => {
-    const { assunto, prioridade, login, tipo_id, anexo } = req.body;
-    
-    // Traduz 'Alta' -> 'A', 'Média' -> 'M', etc.
-    const prioCode = prioridade ? prioridade.charAt(0).toUpperCase() : 'B';
-    
-    const sql = `INSERT INTO ticket 
-        (DES_TICKET, DES_STATUS, DES_PRIORIDADE, DAT_ABERTURA, NRO_TIPO, DES_LOGIN, DOC_ANEXO) 
-        VALUES (?, 'A', ?, NOW(), ?, ?, ?)`;
-    
-    db.query(sql, [assunto, prioCode, tipo_id || 1, login, anexo], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: "Ticket aberto!", id: result.insertId });
     });
 });
 
