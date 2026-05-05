@@ -65,25 +65,24 @@ async function carregarEstatisticas() {
 
         if (!Array.isArray(dadosBrutos)) return;
 
-        // Mapeamento dos dados com JOIN da empresa
-        // Localize este trecho no app-admin.js
-listaTicketsGlobal = dadosBrutos.map(t => ({
-    id: t.id,
-    assunto: t.assunto,
-    usuario: t.email_usuario, 
-    empresa: t.nome_empresa || "Empresa não cadastrada",
-    status: t.status === 'A' ? 'Pendente' : (t.status === 'E' ? 'Em Atendimento' : 'Finalizado'),
-    prioridade: t.prioridade === 'A' ? 'Alta' : (t.prioridade === 'M' ? 'Média' : 'Baixa'),
-    data: t.data,
+        // Mapeamento atualizado incluindo o prazo vindo do JOIN
+        listaTicketsGlobal = dadosBrutos.map(t => ({
+            id: t.id,
+            assunto: t.assunto,
+            usuario: t.email_usuario, 
+            empresa: t.nome_empresa || "Empresa não cadastrada",
+            status: t.status === 'A' ? 'Pendente' : (t.status === 'E' ? 'Em Atendimento' : 'Finalizado'),
+            prioridade: t.prioridade === 'A' ? 'Alta' : (t.prioridade === 'M' ? 'Média' : 'Baixa'),
+            data: t.data,
+            
+            // TRADUÇÃO DO TIPO BASEADA NO SEU BANCO
+            tipo: t.nro_tipo === 1 ? 'Erro' : (t.nro_tipo === 2 ? 'Melhoria' : 'Dúvida'),
 
-    // TRADUÇÃO DO TIPO:
-    tipo: t.nro_tipo === 1 ? 'Erro' : (t.nro_tipo === 2 ? 'Melhoria' : 'Dúvida')
-}));
-        const setMetric = (id, valor) => {
-            const el = document.getElementById(id);
-            if (el) el.innerText = valor;
-        };
+            // CAMPO ESSENCIAL PARA A LÓGICA DE VENCIDOS:
+            prazo_dias: t.prazo_dias || 0 // Pega o valor da tabela tipo_ticket
+        }));
 
+        // Agora passamos a lista com os prazos para a interface calcular os indicadores
         atualizarElementosInterface(listaTicketsGlobal);
        
     } catch (error) {
@@ -98,51 +97,51 @@ function renderizarTabelaGeral(tickets) {
     const tabela = document.getElementById('ticketsByClientList');
     if (!tabela) return;
 
+    const hoje = new Date(); // Data atual: 05/05/2026
+
     tabela.innerHTML = tickets.map(ticket => {
+        // Cálculo de SLA
+        const dataAbertura = new Date(ticket.data);
+        const prazoEmMs = (ticket.prazo_dias || 0) * 24 * 60 * 60 * 1000;
+        const dataLimite = new Date(dataAbertura.getTime() + prazoEmMs);
+        const estaVencido = ticket.status !== 'Finalizado' && hoje > dataLimite;
+
+        // Formatação do selo de atraso
+        let infoAtraso = '';
+        if (estaVencido) {
+            const diffMs = hoje - dataLimite;
+            const diasAtraso = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            const texto = diasAtraso < 1 ? 'HOJE' : `${diasAtraso}D`;
+            infoAtraso = `<span class="sla-tag"><i class="fas fa-clock"></i> ATRASADO ${texto}</span>`;
+        }
+
+        // Mapeamento de classes para status e tipos
         const statusClass = ticket.status.toLowerCase().replace(/\s+/g, '-');
         const tipoClass = ticket.tipo === 'Erro' ? 'type-erro' : 
                          ticket.tipo === 'Melhoria' ? 'type-melhoria' : 'type-duvida';
-        
-        const dataFormatada = new Date(ticket.data).toLocaleDateString('pt-BR');
 
         return `
-            <tr>
-                <!-- 1. ID -->
-                <td><span style="color: #2563eb; font-weight: 800;">#${ticket.id}</span></td>
-                
-                <!-- 2. CLIENTE -->
-                <td>
-                    <div style="font-weight: 700; color: #1e293b;">${ticket.empresa}</div>
-                    <small style="color: #94a3b8; font-size: 11px;">${ticket.usuario}</small>
+            <tr class="${estaVencido ? 'is-overdue' : ''}">
+                <td class="col-id">#${ticket.id}</td>
+                <td class="col-cliente">
+                    <strong>${ticket.empresa}</strong>
+                    <span>${ticket.usuario}</span>
                 </td>
-                
-                <!-- 3. TIPO (Agora em coluna própria) -->
-                <td>
-                    <span class="type-badge ${tipoClass}">${ticket.tipo}</span>
+                <td class="col-tipo">
+                    <span class="badge-outline ${tipoClass}">${ticket.tipo}</span>
                 </td>
-                
-                <!-- 4. ASSUNTO -->
-                <td style="color: #475569; font-size: 13px; max-width: 200px;">
-                    ${ticket.assunto}
+                <td class="col-assunto">
+                    <div class="subject-text">${ticket.assunto}</div>
+                    ${infoAtraso}
                 </td>
-                
-                <!-- 5. DATA -->
-                <td style="color: #64748b; font-size: 13px;">${dataFormatada}</td>
-                
-                <!-- 6. PRIORIDADE -->
-                <td>
-                    <span style="font-weight:600; color: ${ticket.prioridade === 'Alta' ? '#ef4444' : '#475569'};">
-                        ${ticket.prioridade}
-                    </span>
+                <td class="col-data">${new Date(ticket.data).toLocaleDateString('pt-BR')}</td>
+                <td class="col-prio"><span class="prio-text prio-${ticket.prioridade.toLowerCase()}">${ticket.prioridade}</span></td>
+                <td class="col-status">
+                    <span class="status-pill ${statusClass}">${ticket.status}</span>
                 </td>
-                
-                <!-- 7. STATUS -->
-                <td><span class="badge ${statusClass}">${ticket.status}</span></td>
-                
-                <!-- 8. AÇÕES -->
-                <td>
-                    <button class="btn-atender" onclick="abrirRespostaAdmin(${ticket.id})">
-                        <i class="fas fa-external-link-alt"></i> Atender
+                <td class="col-acoes">
+                    <button class="btn-action-icon" onclick="abrirRespostaAdmin(${ticket.id})" title="Atender">
+                        <i class="fas fa-external-link-alt"></i>
                     </button>
                 </td>
             </tr>
@@ -303,11 +302,23 @@ function prepararAnexoAdmin(input) {
 /**
  * RENDERIZAÇÃO DOS GRÁFICOS COM LEGENDAS AUTOMÁTICAS
  */
+/**
+ * RENDERIZAÇÃO DOS GRÁFICOS COM NÚMEROS NAS LEGENDAS
+ */
 function renderizarGraficosDonut(tickets) {
+    // 1. Calculamos os totais para injetar nas strings das legendas
+    const nBaixa = tickets.filter(t => t.prioridade === 'Baixa').length;
+    const nMedia = tickets.filter(t => t.prioridade === 'Média').length;
+    const nAlta = tickets.filter(t => t.prioridade === 'Alta').length;
+
+    const nPendente = tickets.filter(t => t.status === 'Pendente').length;
+    const nAtendimento = tickets.filter(t => t.status === 'Em Atendimento').length;
+    const nFinalizado = tickets.filter(t => t.status === 'Finalizado').length;
+
     const config = (data, labels, colors) => ({
         type: 'doughnut',
         data: { 
-            labels: labels, 
+            labels: labels, // Recebe os novos nomes com (X)
             datasets: [{ 
                 data: data, 
                 backgroundColor: colors, 
@@ -321,42 +332,37 @@ function renderizarGraficosDonut(tickets) {
                     display: true, 
                     position: 'bottom',
                     labels: {
-                        usePointStyle: true, // Usa bolinhas em vez de quadrados
-                        padding: 15,
+                        usePointStyle: true,
+                        padding: 20, // Mais espaço para não grudar no gráfico
                         color: '#475569',
-                        font: {
-                            size: 11,
-                            weight: '600',
-                            family: "'Inter', sans-serif"
-                        }
+                        font: { size: 12, weight: '600' }
                     }
-                },
-                tooltip: {
-                    enabled: true // Mantém o detalhe no hover se precisar do número exato
                 }
             }, 
             maintainAspectRatio: false 
         }
     });
 
+    // Gráfico Prioridade
     const ctxPri = document.getElementById('chartPrioridade');
     if (ctxPri) {
         if (chartPrioridade) chartPrioridade.destroy();
-        chartPrioridade = new Chart(ctxPri, config([
-            tickets.filter(t => t.prioridade === 'Baixa').length,
-            tickets.filter(t => t.prioridade === 'Média').length,
-            tickets.filter(t => t.prioridade === 'Alta').length
-        ], ['Baixa', 'Média', 'Alta'], ['#f97316', '#2563eb', '#ef4444']));
+        chartPrioridade = new Chart(ctxPri, config(
+            [nBaixa, nMedia, nAlta], 
+            [`Baixa (${nBaixa})`, `Média (${nMedia})`, `Alta (${nAlta})`], 
+            ['#f97316', '#2563eb', '#ef4444']
+        ));
     }
 
+    // Gráfico Status
     const ctxSta = document.getElementById('chartStatus');
     if (ctxSta) {
         if (chartStatus) chartStatus.destroy();
-        chartStatus = new Chart(ctxSta, config([
-            tickets.filter(t => t.status === 'Pendente').length,
-            tickets.filter(t => t.status === 'Em Atendimento').length,
-            tickets.filter(t => t.status === 'Finalizado').length
-        ], ['Pendente', 'Atendimento', 'Finalizado'], ['#2563eb', '#facc15', '#10b981']));
+        chartStatus = new Chart(ctxSta, config(
+            [nPendente, nAtendimento, nFinalizado], 
+            [`Pendente (${nPendente})`, `Atendimento (${nAtendimento})`, `Finalizado (${nFinalizado})`], 
+            ['#2563eb', '#facc15', '#10b981']
+        ));
     }
 }
 
