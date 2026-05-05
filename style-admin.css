@@ -588,3 +588,22 @@ close-btn { background: #f1f5f9; border: none; width: 32px; height: 32px; border
     background: #2563eb;
     color: #fff;
 }
+
+/* Status Cancelado - Estilo Neutro/Escuro */
+.status-pill.cancelado {
+    background: #f1f5f9;
+    color: #475569;
+    text-decoration: line-through; /* Diferencial visual */
+}
+
+/* Botão de Cancelar */
+.btn-cancel:hover {
+    background: #ef4444 !important;
+    color: #fff !important;
+}
+
+/* Linha cancelada fica opaca */
+tr.is-canceled {
+    opacity: 0.6;
+    filter: grayscale(0.5);
+}
