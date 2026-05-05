@@ -300,11 +300,43 @@ function prepararAnexoAdmin(input) {
     reader.readAsDataURL(file);
 }
 
+/**
+ * RENDERIZAÇÃO DOS GRÁFICOS COM LEGENDAS AUTOMÁTICAS
+ */
 function renderizarGraficosDonut(tickets) {
     const config = (data, labels, colors) => ({
         type: 'doughnut',
-        data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0, cutout: '75%' }] },
-        options: { plugins: { legend: { display: false } }, maintainAspectRatio: false }
+        data: { 
+            labels: labels, 
+            datasets: [{ 
+                data: data, 
+                backgroundColor: colors, 
+                borderWidth: 0, 
+                cutout: '75%' 
+            }] 
+        },
+        options: { 
+            plugins: { 
+                legend: { 
+                    display: true, 
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true, // Usa bolinhas em vez de quadrados
+                        padding: 15,
+                        color: '#475569',
+                        font: {
+                            size: 11,
+                            weight: '600',
+                            family: "'Inter', sans-serif"
+                        }
+                    }
+                },
+                tooltip: {
+                    enabled: true // Mantém o detalhe no hover se precisar do número exato
+                }
+            }, 
+            maintainAspectRatio: false 
+        }
     });
 
     const ctxPri = document.getElementById('chartPrioridade');
@@ -393,23 +425,17 @@ function aplicarFiltros() {
 /**
  * Função auxiliar para isolar a lógica de atualização visual
  */
+/**
+ * Função auxiliar para atualizar apenas os componentes visuais
+ */
 function atualizarElementosInterface(dados) {
-    const setMetric = (id, valor) => {
-        const el = document.getElementById(id);
-        if (el) el.innerText = valor;
-    };
-
-    // Atualiza os Contadores (Cards)
-    setMetric('countVencidos', dados.filter(t => t.prioridade === 'Alta' && t.status !== 'Finalizado').length); 
-    setMetric('countAbertos', dados.filter(t => t.status === 'Pendente').length);
-    setMetric('countEspera', dados.filter(t => t.status === 'Em Atendimento').length);
-    setMetric('countMonitorados', dados.length);
-
-    // Atualiza os Gráficos de Donut e Barras
+    // 1. Redesenha os Gráficos de Donut (Prioridade e Status)
     renderizarGraficosDonut(dados);
+    
+    // 2. Redesenha as Barras de Progresso de Carga de Trabalho
     renderizarBarrasProgresso(dados);
     
-    // Atualiza a Tabela Geral
+    // 3. Atualiza a Tabela de Atendimentos (caso esteja visível)
     renderizarTabelaGeral(dados);
 }
 
