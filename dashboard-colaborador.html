@@ -40,86 +40,72 @@
         <main class="content">
             
             <!-- VIEW: DASHBOARD -->
-            <div id="dashboardView" class="view-section">
-                <header class="content-header">
-                    <div class="header-title-row">
-                        <div>
-                            <h2>Visão Geral do Sistema</h2>
-                            <p id="dataAtual" class="date-subtitle"></p>
-                        </div>
-                        <div class="header-actions">
-                            <button class="btn-secondary" onclick="navegarMenu('ticketsSection')">Ver Chamados</button>
-                            <button class="btn-primary" onclick="navegarMenu('reportsView')">Relatórios</button>
-                        </div>
-                    </div>
-                </header>
-
-                <!-- BARRA DE FILTROS DINÂMICOS -->
-                <section class="filter-container-modern" style="background: #fff; padding: 20px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); display: flex; gap: 25px; align-items: flex-end;">
-                    <div class="filter-group" style="flex: 1;">
-                        <label style="display: block; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
-                            <i class="fas fa-filter"></i> Filtrar por Tipo
-                        </label>
-                        <select id="filterTipo" onchange="aplicarFiltros()" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; color: #1e293b; font-weight: 500; outline: none;">
-                            <option value="todos">Todos os Tipos</option>
-                            <option value="Erro">Erro</option>
-                            <option value="Dúvida">Dúvida</option>
-                            <option value="Melhoria">Melhoria</option>
-                        </select>
-                    </div>
-
-                    <div class="filter-group" style="flex: 1;">
-                        <label style="display: block; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
-                            <i class="fas fa-signal"></i> Filtrar por Status
-                        </label>
-                        <select id="filterStatus" onchange="aplicarFiltros()" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; color: #1e293b; font-weight: 500; outline: none;">
-                            <option value="todos">Todos os Status</option>
-                            <option value="Pendente">Pendente</option>
-                            <option value="Em Atendimento">Em Atendimento</option>
-                            <option value="Finalizado">Finalizado</option>
-                        </select>
-                    </div>
-
-                    <div class="filter-info" style="flex: 2; padding-bottom: 10px; color: #94a3b8; font-size: 12px; font-style: italic;">
-                        * O contador e os gráficos são atualizados em tempo real conforme sua seleção.
-                    </div>
-                </section>
-
-                <section class="dashboard-metrics">
-                    <div class="metric-card"><span>Tickets vencidos</span><h3 id="countVencidos" class="metric-value red">0</h3></div>
-                    <div class="metric-card"><span>Vencendo hoje</span><h3 id="countVencendoHoje" class="metric-value orange">0</h3></div>
-                    <div class="metric-card"><span>Abertos</span><h3 id="countAbertos" class="metric-value blue">0</h3></div>
-                    <div class="metric-card"><span>Em espera</span><h3 id="countEspera" class="metric-value gray">0</h3></div>
-                    <div class="metric-card"><span>Não Atribuídos</span><h3 id="countNaoAtribuidos" class="metric-value purple">0</h3></div>
-                    <div class="metric-card"><span>Monitorados</span><h3 id="countMonitorados" class="metric-value light-blue">0</h3></div>
-                </section>
-
-                <section class="charts-grid">
-                    <div class="chart-container modern-card">
-                        <div class="chart-header">
-                            <span><i class="fas fa-exclamation-circle"></i> Volumetria por Prioridade</span>
-                            <i class="fas fa-ellipsis-v"></i>
-                        </div>
-                        <div class="chart-canvas-wrapper"><canvas id="chartPrioridade"></canvas></div>
-                    </div>
-                    <div class="chart-container modern-card">
-                        <div class="chart-header">
-                            <span><i class="fas fa-tasks"></i> Status da Operação</span>
-                            <i class="fas fa-ellipsis-v"></i>
-                        </div>
-                        <div class="chart-canvas-wrapper"><canvas id="chartStatus"></canvas></div>
-                    </div>
-                    <div class="chart-container modern-card">
-                        <div class="chart-header">
-                            <span><i class="fas fa-chart-bar"></i> Carga de Trabalho (SLA)</span>
-                            <i class="fas fa-ellipsis-v"></i>
-                        </div>
-                        <div id="barChartContainer" class="chart-bars-content-modern" style="padding: 15px;">
-                            <!-- Injetado pelo JS -->
-                        </div>
-                    </div>
-                </section>
+<div id="dashboardView" class="view-section">
+    <header class="content-header">
+        <div class="header-title-row">
+            <div>
+                <h2>Visão Geral do Sistema</h2>
+                <p id="dataAtual" class="date-subtitle"></p>
             </div>
+            <div class="header-actions">
+                <button class="btn-secondary" onclick="navegarMenu('ticketsSection')">Ver Chamados</button>
+                <button class="btn-primary" onclick="navegarMenu('reportsView')">Relatórios</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- BARRA DE FILTROS DINÂMICOS (Mantida para controle dos gráficos) -->
+    <section class="filter-container-modern" style="background: #fff; padding: 20px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); display: flex; gap: 25px; align-items: flex-end;">
+        <div class="filter-group" style="flex: 1;">
+            <label style="display: block; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
+                <i class="fas fa-filter"></i> Filtrar por Tipo
+            </label>
+            <select id="filterTipo" onchange="aplicarFiltros()" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; color: #1e293b; font-weight: 500; outline: none;">
+                <option value="todos">Todos os Tipos</option>
+                <option value="Erro">Erro</option>
+                <option value="Dúvida">Dúvida</option>
+                <option value="Melhoria">Melhoria</option>
+            </select>
+        </div>
+
+        <div class="filter-group" style="flex: 1;">
+            <label style="display: block; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
+                <i class="fas fa-signal"></i> Filtrar por Status
+            </label>
+            <select id="filterStatus" onchange="aplicarFiltros()" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; color: #1e293b; font-weight: 500; outline: none;">
+                <option value="todos">Todos os Status</option>
+                <option value="Pendente">Pendente</option>
+                <option value="Em Atendimento">Em Atendimento</option>
+                <option value="Finalizado">Finalizado</option>
+            </select>
+        </div>
+    </section>
+
+    <!-- APENAS OS GRÁFICOS -->
+    <section class="charts-grid">
+        <div class="chart-container modern-card">
+            <div class="chart-header">
+                <span><i class="fas fa-exclamation-circle"></i> Volumetria por Prioridade</span>
+                <i class="fas fa-ellipsis-v"></i>
+            </div>
+            <div class="chart-canvas-wrapper"><canvas id="chartPrioridade"></canvas></div>
+        </div>
+        <div class="chart-container modern-card">
+            <div class="chart-header">
+                <span><i class="fas fa-tasks"></i> Status da Operação</span>
+                <i class="fas fa-ellipsis-v"></i>
+            </div>
+            <div class="chart-canvas-wrapper"><canvas id="chartStatus"></canvas></div>
+        </div>
+        <div class="chart-container modern-card">
+            <div class="chart-header">
+                <span><i class="fas fa-chart-bar"></i> Carga de Trabalho (SLA)</span>
+                <i class="fas fa-ellipsis-v"></i>
+            </div>
+            <div id="barChartContainer" class="chart-bars-content-modern" style="padding: 15px;"></div>
+        </div>
+    </section>
+</div>
 
             <!-- VIEW: ATENDIMENTO -->
             <div id="ticketsSection" class="view-section" style="display: none;">
