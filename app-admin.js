@@ -26,7 +26,7 @@ if (elData) {
 let chartPrioridade, chartStatus;
 let anexoAdminTemp = null; 
 let listaTicketsGlobal = []; 
-let ticketSelecionadoId = null; // Declarada corretamente aqui
+let ticketSelecionadoId = null;
 
 /**
  * NAVEGAÇÃO ENTRE TELAS
@@ -65,24 +65,20 @@ async function carregarEstatisticas() {
 
         if (!Array.isArray(dadosBrutos)) return;
 
-        // Mapeamento atualizado incluindo o prazo vindo do JOIN
         listaTicketsGlobal = dadosBrutos.map(t => ({
             id: t.id,
             assunto: t.assunto,
             usuario: t.email_usuario, 
             empresa: t.nome_empresa || "Empresa não cadastrada",
-            status: t.status === 'A' ? 'Pendente' : (t.status === 'E' ? 'Em Atendimento' : 'Finalizado'),
+            status: t.status === 'A' ? 'Pendente' : 
+                   (t.status === 'E' ? 'Em Atendimento' : 
+                   (t.status === 'C' ? 'Cancelado' : 'Finalizado')),
             prioridade: t.prioridade === 'A' ? 'Alta' : (t.prioridade === 'M' ? 'Média' : 'Baixa'),
             data: t.data,
-            
-            // TRADUÇÃO DO TIPO BASEADA NO SEU BANCO
             tipo: t.nro_tipo === 1 ? 'Erro' : (t.nro_tipo === 2 ? 'Melhoria' : 'Dúvida'),
-
-            // CAMPO ESSENCIAL PARA A LÓGICA DE VENCIDOS:
-            prazo_dias: t.prazo_dias || 0 // Pega o valor da tabela tipo_ticket
+            prazo_dias: t.prazo_dias || 0 
         }));
 
-        // Agora passamos a lista com os prazos para a interface calcular os indicadores
         atualizarElementosInterface(listaTicketsGlobal);
        
     } catch (error) {
@@ -97,16 +93,14 @@ function renderizarTabelaGeral(tickets) {
     const tabela = document.getElementById('ticketsByClientList');
     if (!tabela) return;
 
-    const hoje = new Date(); // Data atual: 05/05/2026
+    const hoje = new Date();
 
     tabela.innerHTML = tickets.map(ticket => {
-        // Cálculo de SLA
         const dataAbertura = new Date(ticket.data);
         const prazoEmMs = (ticket.prazo_dias || 0) * 24 * 60 * 60 * 1000;
         const dataLimite = new Date(dataAbertura.getTime() + prazoEmMs);
-        const estaVencido = ticket.status !== 'Finalizado' && hoje > dataLimite;
+        const estaVencido = ticket.status !== 'Finalizado' && ticket.status !== 'Cancelado' && hoje > dataLimite;
 
-        // Formatação do selo de atraso
         let infoAtraso = '';
         if (estaVencido) {
             const diffMs = hoje - dataLimite;
@@ -115,13 +109,24 @@ function renderizarTabelaGeral(tickets) {
             infoAtraso = `<span class="sla-tag"><i class="fas fa-clock"></i> ATRASADO ${texto}</span>`;
         }
 
-        // Mapeamento de classes para status e tipos
         const statusClass = ticket.status.toLowerCase().replace(/\s+/g, '-');
         const tipoClass = ticket.tipo === 'Erro' ? 'type-erro' : 
                          ticket.tipo === 'Melhoria' ? 'type-melhoria' : 'type-duvida';
 
+        // LÓGICA DOS BOTÕES DE AÇÃO (Agora dentro do loop correta)
+        const botoesAcao = (ticket.status === 'Finalizado' || ticket.status === 'Cancelado')
+            ? `<span style="color: #94a3b8; font-size: 11px; font-weight: 600;">SEM AÇÕES</span>`
+            : `
+                <button class="btn-action-icon" onclick="abrirRespostaAdmin(${ticket.id})" title="Atender">
+                    <i class="fas fa-external-link-alt"></i>
+                </button>
+                <button class="btn-action-icon btn-cancel" onclick="cancelarTicket(${ticket.id})" title="Cancelar Chamado">
+                    <i class="fas fa-times-circle"></i>
+                </button>
+            `;
+
         return `
-            <tr class="${estaVencido ? 'is-overdue' : ''}">
+            <tr class="${estaVencido ? 'is-overdue' : ''} ${ticket.status === 'Cancelado' ? 'is-canceled' : ''}">
                 <td class="col-id">#${ticket.id}</td>
                 <td class="col-cliente">
                     <strong>${ticket.empresa}</strong>
@@ -140,9 +145,7 @@ function renderizarTabelaGeral(tickets) {
                     <span class="status-pill ${statusClass}">${ticket.status}</span>
                 </td>
                 <td class="col-acoes">
-                    <button class="btn-action-icon" onclick="abrirRespostaAdmin(${ticket.id})" title="Atender">
-                        <i class="fas fa-external-link-alt"></i>
-                    </button>
+                    ${botoesAcao}
                 </td>
             </tr>
         `;
@@ -150,163 +153,9 @@ function renderizarTabelaGeral(tickets) {
 }
 
 /**
- * INTERAÇÃO DE CHAT (ADMIN)
- */
-async function abrirRespostaAdmin(id) {
-    ticketSelecionadoId = id; // Atribui o ID global
-    
-    try {
-        const response = await fetch(`http://localhost:3000/api/mensagens/${id}`);
-        const mensagens = await response.json();
-
-        const chatContainer = document.getElementById('historicoChatAdmin');
-        chatContainer.innerHTML = mensagens.map(msg => {
-            const dataObjeto = new Date(msg.data);
-            const dataFormat = dataObjeto.toLocaleDateString('pt-BR');
-            const horaFormat = dataObjeto.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            
-            const temAnexo = msg.anexo && msg.anexo.length > 50;
-            const htmlAnexoMsg = temAnexo ? `
-                <div style="margin-top:10px; border-top:1px dashed #e2e8f0; padding-top:8px;">
-                    <a href="${msg.anexo}" download="anexo_${msg.id}" style="font-size:12px; color:#2563eb; text-decoration:none; font-weight: 600;">
-                        <i class="fas fa-download"></i> Baixar Arquivo
-                    </a>
-                </div>` : '';
-
-            return `
-                <div class="interaction-card ${msg.email_autor === usuarioAtivo.email ? 'msg-me' : 'msg-other'}">
-                    <div class="msg-header">
-                        <strong style="font-size: 12px; color: #1e293b;">${msg.autor_display}</strong>
-                        <span style="font-size: 10px; color: #94a3b8;">${dataFormat} às ${horaFormat}</span>
-                    </div>
-                    <p style="margin: 0; font-size: 14px; color: #334155; line-height: 1.4;">${msg.texto}</p>
-                    ${htmlAnexoMsg}
-                </div>
-            `;
-        }).join('');
-
-        document.getElementById('idTicketResponder').innerText = id;
-        document.getElementById('cardTabelaTickets').style.display = 'none'; 
-        document.getElementById('containerInteracaoAdmin').style.display = 'block'; 
-        
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    } catch (error) {
-        console.error("Erro ao carregar chat:", error);
-    }
-}
-
-/**
- * ENVIO DE RESPOSTA (ADMIN)
- */
-async function enviarRespostaAdmin() {
-    const campoTexto = document.getElementById('textoRespostaAdmin');
-    const idTicket = document.getElementById('idTicketResponder').innerText;
-    
-    if (!campoTexto.value.trim() && !anexoAdminTemp) {
-        alert("Digite uma mensagem!");
-        return;
-    }
-
-    const payload = {
-        ticket_id: idTicket,
-        autor: usuarioAtivo.email,
-        texto: campoTexto.value,
-        anexo_conteudo: anexoAdminTemp ? anexoAdminTemp.conteudo : null
-    };
-
-    try {
-        const response = await fetch('http://localhost:3000/api/mensagens', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (response.ok) {
-            campoTexto.value = "";
-            anexoAdminTemp = null;
-            document.getElementById('preview-anexo-admin').innerText = '';
-            fecharAreaResposta();
-        }
-    } catch (error) {
-        alert("Erro ao enviar resposta ao banco.");
-    }
-}
-
-/**
- * GESTÃO DE USUÁRIOS
- */
-async function carregarUsuarios() {
-    const tbody = document.getElementById('listaUsuarios');
-    if (!tbody) return;
-
-    try {
-        const response = await fetch('http://localhost:3000/api/usuarios');
-        const usuarios = await response.json();
-
-        tbody.innerHTML = usuarios.map(user => `
-            <tr>
-                <td><strong>${user.nome}</strong></td>
-                <td>${user.email}</td>
-                <td><span class="profile-tag">${user.perfil}</span></td>
-                <td><span class="badge finalizado">Ativo</span></td>
-                <td>
-                    <button class="btn-action-soft" onclick="deletarUsuario('${user.email}')">
-                        <i class="far fa-trash-alt"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-    } catch (error) {
-        console.error("Erro ao carregar usuários:", error);
-    }
-}
-
-// FUNÇÃO DELETAR (Adicionada)
-async function deletarUsuario(email) {
-    if (!confirm(`Deseja remover o acesso de ${email}?`)) return;
-
-    try {
-        const response = await fetch(`http://localhost:3000/api/usuarios/${email}`, { method: 'DELETE' });
-        if (response.ok) {
-            carregarUsuarios();
-        }
-    } catch (error) {
-        alert("Erro ao deletar usuário.");
-    }
-}
-
-/**
- * AUXILIARES E GRÁFICOS
- */
-function fecharAreaResposta() {
-    document.getElementById('containerInteracaoAdmin').style.display = 'none';
-    document.getElementById('cardTabelaTickets').style.display = 'block';
-    carregarEstatisticas(); 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function prepararAnexoAdmin(input) {
-    const file = input.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        anexoAdminTemp = { nome: file.name, conteudo: e.target.result };
-        const preview = document.getElementById('preview-anexo-admin');
-        if (preview) preview.innerText = "📎 " + file.name;
-    };
-    reader.readAsDataURL(file);
-}
-
-/**
- * RENDERIZAÇÃO DOS GRÁFICOS COM LEGENDAS AUTOMÁTICAS
- */
-/**
- * RENDERIZAÇÃO DOS GRÁFICOS COM NÚMEROS NAS LEGENDAS
+ * RENDERIZAÇÃO DOS GRÁFICOS (Atualizado com Cancelados)
  */
 function renderizarGraficosDonut(tickets) {
-    // 1. Calculamos os totais para injetar nas strings das legendas
     const nBaixa = tickets.filter(t => t.prioridade === 'Baixa').length;
     const nMedia = tickets.filter(t => t.prioridade === 'Média').length;
     const nAlta = tickets.filter(t => t.prioridade === 'Alta').length;
@@ -314,36 +163,25 @@ function renderizarGraficosDonut(tickets) {
     const nPendente = tickets.filter(t => t.status === 'Pendente').length;
     const nAtendimento = tickets.filter(t => t.status === 'Em Atendimento').length;
     const nFinalizado = tickets.filter(t => t.status === 'Finalizado').length;
+    const nCancelado = tickets.filter(t => t.status === 'Cancelado').length;
 
     const config = (data, labels, colors) => ({
         type: 'doughnut',
         data: { 
-            labels: labels, // Recebe os novos nomes com (X)
-            datasets: [{ 
-                data: data, 
-                backgroundColor: colors, 
-                borderWidth: 0, 
-                cutout: '75%' 
-            }] 
+            labels: labels, 
+            datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, cutout: '75%' }] 
         },
         options: { 
             plugins: { 
                 legend: { 
-                    display: true, 
-                    position: 'bottom',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20, // Mais espaço para não grudar no gráfico
-                        color: '#475569',
-                        font: { size: 12, weight: '600' }
-                    }
+                    display: true, position: 'bottom',
+                    labels: { usePointStyle: true, padding: 20, color: '#475569', font: { size: 11, weight: '600' } }
                 }
             }, 
             maintainAspectRatio: false 
         }
     });
 
-    // Gráfico Prioridade
     const ctxPri = document.getElementById('chartPrioridade');
     if (ctxPri) {
         if (chartPrioridade) chartPrioridade.destroy();
@@ -354,20 +192,49 @@ function renderizarGraficosDonut(tickets) {
         ));
     }
 
-    // Gráfico Status
     const ctxSta = document.getElementById('chartStatus');
     if (ctxSta) {
         if (chartStatus) chartStatus.destroy();
         chartStatus = new Chart(ctxSta, config(
-            [nPendente, nAtendimento, nFinalizado], 
-            [`Pendente (${nPendente})`, `Atendimento (${nAtendimento})`, `Finalizado (${nFinalizado})`], 
-            ['#2563eb', '#facc15', '#10b981']
+            [nPendente, nAtendimento, nFinalizado, nCancelado], 
+            [`Pendente (${nPendente})`, `Atendimento (${nAtendimento})`, `Finalizado (${nFinalizado})`, `Cancelado (${nCancelado})`], 
+            ['#2563eb', '#facc15', '#10b981', '#94a3b8'] // Cinza para o cancelado
         ));
     }
 }
 
 /**
- * RENDERIZAÇÃO DAS BARRAS DE PROGRESSO (Prioridade)
+ * AÇÕES E FILTROS
+ */
+async function cancelarTicket(id) {
+    if (!confirm(`Deseja realmente cancelar o chamado #${id}?`)) return;
+
+    try {
+        const response = await fetch(`http://localhost:3000/api/tickets/${id}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ novoStatus: 'C' })
+        });
+
+        if (response.ok) carregarEstatisticas();
+    } catch (error) {
+        alert("Erro ao cancelar chamado.");
+    }
+}
+
+function aplicarFiltros() {
+    const tipoFiltro = document.getElementById('filterTipo').value;
+    const statusFiltro = document.getElementById('filterStatus').value;
+    let listaFiltrada = [...listaTicketsGlobal];
+
+    if (tipoFiltro !== 'todos') listaFiltrada = listaFiltrada.filter(t => t.tipo === tipoFiltro);
+    if (statusFiltro !== 'todos') listaFiltrada = listaFiltrada.filter(t => t.status === statusFiltro);
+
+    atualizarElementosInterface(listaFiltrada);
+}
+
+/**
+ * RENDERIZAÇÃO DAS BARRAS DE PROGRESSO (Prioridade/SLA)
  */
 function renderizarBarrasProgresso(tickets) {
     const container = document.getElementById('barChartContainer');
@@ -398,56 +265,10 @@ function renderizarBarrasProgresso(tickets) {
     }).join('');
 }
 
-function formatarDataSimples(dataISO) {
-    if (!dataISO) return "---";
-    const data = new Date(dataISO);
-    return data.toLocaleDateString('pt-BR'); // Formato dd/mm/aaaa
-}
-
-/**
- * FILTRAGEM DINÂMICA DO DASHBOARD
- */
-function aplicarFiltros() {
-    const tipoFiltro = document.getElementById('filterTipo').value;
-    const statusFiltro = document.getElementById('filterStatus').value;
-
-    // Começamos com a lista completa que veio do banco
-    let listaFiltrada = [...listaTicketsGlobal];
-
-    // Filtra por Tipo (se não for "todos")
-    if (tipoFiltro !== 'todos') {
-        listaFiltrada = listaFiltrada.filter(t => t.tipo === tipoFiltro);
-    }
-
-    // Filtra por Status (se não for "todos")
-    if (statusFiltro !== 'todos') {
-        listaFiltrada = listaFiltrada.filter(t => t.status === statusFiltro);
-    }
-
-    // AGORA: Atualiza tudo na tela usando a lista filtrada!
-    atualizarElementosInterface(listaFiltrada);
-}
-
-/**
- * Função auxiliar para isolar a lógica de atualização visual
- */
-/**
- * Função auxiliar para atualizar apenas os componentes visuais
- */
 function atualizarElementosInterface(dados) {
-    // 1. Redesenha os Gráficos de Donut (Prioridade e Status)
     renderizarGraficosDonut(dados);
-    
-    // 2. Redesenha as Barras de Progresso de Carga de Trabalho
     renderizarBarrasProgresso(dados);
-    
-    // 3. Atualiza a Tabela de Atendimentos (caso esteja visível)
     renderizarTabelaGeral(dados);
-}
-
-function logout() {
-    localStorage.removeItem('sessao_ativa');
-    window.location.href = 'index.html';
 }
 
 // Inicialização automática
