@@ -183,4 +183,18 @@ app.delete('/api/usuarios/:email', (req, res) => {
     });
 });
 
+
+// ATUALIZAR STATUS DO TICKET (Cancelar ou Finalizar)
+app.put('/api/tickets/:id/status', (req, res) => {
+    const { id } = req.params;
+    const { novoStatus } = req.body; // 'C' para Cancelado, 'F' para Finalizado
+
+    const sql = `UPDATE ticket SET DES_STATUS = ? WHERE NRO_TICKET = ?`;
+
+    db.query(sql, [novoStatus, id], (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Status atualizado com sucesso!" });
+    });
+});
+
 app.listen(3000, () => console.log("🚀 Servidor GESISTEC rodando na porta 3000"));
