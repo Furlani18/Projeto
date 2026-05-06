@@ -15,22 +15,14 @@
                     <h1>GESISTEC</h1>
                     <span>Gestão Tecnológica</span>
                 </div>
-                <p class="login-subtitle">Selecione seu perfil para acessar o portal</p>
+                <!-- Subtítulo ajustado para ser genérico -->
+                <p class="login-subtitle">Bem-vindo ao portal de gestão</p>
             </header>
 
-            <div class="role-selector">
-                <button type="button" id="btn-cliente" class="role-btn active" onclick="selecionarPerfil('cliente')">
-                    <i class="fas fa-user"></i>
-                    <span>Cliente</span>
-                </button>
-                <button type="button" id="btn-equipe" class="role-btn" onclick="selecionarPerfil('colaborador')">
-                    <i class="fas fa-headset"></i>
-                    <span>Equipe</span>
-                </button>
-            </div>
+            <!-- A seção 'role-selector' foi removida daqui -->
 
             <form id="loginForm" class="login-form">
-                <input type="hidden" id="perfilSelecionado" value="cliente">
+                <!-- O input hidden 'perfilSelecionado' foi removido, pois o perfil virá do banco -->
 
                 <div class="form-group">
                     <label for="email">E-mail Corporativo</label>
@@ -52,7 +44,7 @@
                 </div>
 
                 <button type="submit" class="btn-login-submit">
-                    Entrar no Sistema <i class="fas fa-arrow-right"></i>
+                    Acessar Portal <i class="fas fa-arrow-right"></i>
                 </button>
             </form>
 
