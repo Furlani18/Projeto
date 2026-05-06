@@ -222,6 +222,35 @@ async function cancelarTicket(id) {
     }
 }
 
+/**
+ * GESTÃO DE USUÁRIOS: BUSCA E RENDERIZAÇÃO
+ */
+async function carregarUsuarios() {
+    const tbody = document.getElementById('listaUsuarios');
+    if (!tbody) return;
+
+    try {
+        const response = await fetch('http://localhost:3000/api/usuarios');
+        const usuarios = await response.json();
+
+        tbody.innerHTML = usuarios.map(user => `
+            <tr>
+                <td><strong>${user.nome}</strong></td>
+                <td>${user.email}</td>
+                <td><span class="profile-tag">${user.perfil}</span></td>
+                <td><span class="badge finalizado">Ativo</span></td>
+                <td>
+                    <button class="btn-action-soft" onclick="deletarUsuario('${user.email}')" title="Remover Usuário">
+                        <i class="far fa-trash-alt"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        console.error("Erro ao carregar usuários:", error);
+    }
+}
+
 function aplicarFiltros() {
     const tipoFiltro = document.getElementById('filterTipo').value;
     const statusFiltro = document.getElementById('filterStatus').value;
@@ -263,6 +292,29 @@ function renderizarBarrasProgresso(tickets) {
             </div>
         `;
     }).join('');
+}
+
+/**
+ * REMOVER USUÁRIO DO SISTEMA
+ */
+async function deletarUsuario(email) {
+    if (!confirm(`Deseja remover permanentemente o acesso de ${email}?`)) return;
+
+    try {
+        const response = await fetch(`http://localhost:3000/api/usuarios/${email}`, { 
+            method: 'DELETE' 
+        });
+        
+        if (response.ok) {
+            // Recarrega a lista após a exclusão com sucesso
+            carregarUsuarios();
+        } else {
+            const erro = await response.json();
+            alert("Erro: " + erro.error);
+        }
+    } catch (error) {
+        alert("Erro de conexão ao tentar deletar usuário.");
+    }
 }
 
 function atualizarElementosInterface(dados) {
