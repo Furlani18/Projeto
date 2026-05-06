@@ -317,10 +317,144 @@ async function deletarUsuario(email) {
     }
 }
 
+/**
+ * BUSCAR MENSAGENS E ABRIR CHAT
+ */
+async function abrirRespostaAdmin(id) {
+    ticketSelecionadoId = id; // Seta o ID na global que você já declarou
+    
+    try {
+        const response = await fetch(`http://localhost:3000/api/mensagens/${id}`);
+        const mensagens = await response.json();
+
+        const chatContainer = document.getElementById('historicoChatAdmin');
+        if (!chatContainer) return;
+
+        chatContainer.innerHTML = mensagens.map(msg => {
+            const dataObjeto = new Date(msg.data);
+            const dataFormat = dataObjeto.toLocaleDateString('pt-BR');
+            const horaFormat = dataObjeto.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            
+            // Lógica de anexo baseada no seu sistema de arquivos/base64
+            const temAnexo = msg.anexo && msg.anexo.length > 50;
+            const htmlAnexoMsg = temAnexo ? `
+                <div style="margin-top:10px; border-top:1px dashed #e2e8f0; padding-top:8px;">
+                    <a href="${msg.anexo}" download="anexo_${msg.id}" style="font-size:12px; color:#2563eb; text-decoration:none; font-weight: 600;">
+                        <i class="fas fa-download"></i> Baixar Arquivo
+                    </a>
+                </div>` : '';
+
+            // Verifica se a mensagem é do admin logado ou do cliente
+            const isMe = msg.email_autor === usuarioAtivo.email;
+
+            return `
+                <div class="interaction-card ${isMe ? 'msg-me' : 'msg-other'}">
+                    <div class="msg-header">
+                        <strong style="font-size: 12px;">${msg.autor_display}</strong>
+                        <span style="font-size: 10px; color: #94a3b8;">${dataFormat} às ${horaFormat}</span>
+                    </div>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.4;">${msg.texto}</p>
+                    ${htmlAnexoMsg}
+                </div>
+            `;
+        }).join('');
+
+        // Atualiza o ID no título do chat e faz a troca de telas
+        document.getElementById('idTicketResponder').innerText = id;
+        document.getElementById('cardTabelaTickets').style.display = 'none'; 
+        document.getElementById('containerInteracaoAdmin').style.display = 'block'; 
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    } catch (error) {
+        console.error("Erro ao carregar chat:", error);
+    }
+}
+
+/**
+ * ENVIAR RESPOSTA DO COLABORADOR
+ */
+async function enviarRespostaAdmin() {
+    const campoTexto = document.getElementById('textoRespostaAdmin');
+    const idTicket = document.getElementById('idTicketResponder').innerText;
+    
+    if (!campoTexto.value.trim() && !anexoAdminTemp) {
+        alert("Digite uma mensagem!");
+        return;
+    }
+
+    const payload = {
+        ticket_id: idTicket,
+        autor: usuarioAtivo.email,
+        texto: campoTexto.value,
+        anexo_conteudo: anexoAdminTemp ? anexoAdminTemp.conteudo : null
+    };
+
+    try {
+        const response = await fetch('http://localhost:3000/api/mensagens', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            campoTexto.value = "";
+            anexoAdminTemp = null;
+            const preview = document.getElementById('preview-anexo-admin');
+            if (preview) preview.innerText = '';
+            fecharAreaResposta();
+        }
+    } catch (error) {
+        alert("Erro ao enviar resposta.");
+    }
+}
+
+/**
+ * VOLTAR PARA A TABELA (FECHAR CHAT)
+ */
+function fecharAreaResposta() {
+    document.getElementById('containerInteracaoAdmin').style.display = 'none';
+    document.getElementById('cardTabelaTickets').style.display = 'block';
+    carregarEstatisticas(); // Recarrega para ver se o status mudou para 'Em Atendimento'
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function atualizarElementosInterface(dados) {
     renderizarGraficosDonut(dados);
     renderizarBarrasProgresso(dados);
     renderizarTabelaGeral(dados);
+}
+
+/**
+ * CONVERTER ARQUIVO PARA BASE64 (PARA O PREVIEW E ENVIO)
+ */
+function prepararAnexoAdmin(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        // Armazena na variável global que você já declarou no topo do arquivo
+        anexoAdminTemp = { 
+            nome: file.name, 
+            conteudo: e.target.result 
+        };
+        
+        const preview = document.getElementById('preview-anexo-admin');
+        if (preview) preview.innerText = "📎 " + file.name;
+    };
+    reader.readAsDataURL(file);
+}
+
+/**
+ * ENCERRAR SESSÃO E SAIR
+ */
+function logout() {
+    // Remove o token/objeto de sessão do armazenamento local
+    localStorage.removeItem('sessao_ativa');
+    
+    // Redireciona para a página de login
+    window.location.href = 'index.html';
 }
 
 // Inicialização automática
