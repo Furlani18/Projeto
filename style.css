@@ -225,6 +225,12 @@ body {
     border-top: 1px solid var(--border-color);
     padding-top: 1.5rem;
 }
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px; /* Aumenta o respiro entre os campos */
+    padding-top: 10px;
+}
 
 .login-footer p {
     font-size: 0.8rem;
