@@ -155,52 +155,79 @@ function renderizarTabelaGeral(tickets) {
 /**
  * RENDERIZAÇÃO DOS GRÁFICOS (Atualizado com Cancelados)
  */
-function renderizarGraficosDonut(tickets) {
-    const nBaixa = tickets.filter(t => t.prioridade === 'Baixa').length;
-    const nMedia = tickets.filter(t => t.prioridade === 'Média').length;
-    const nAlta = tickets.filter(t => t.prioridade === 'Alta').length;
+// Objeto global para armazenar as instâncias e podermos destruí-las ao atualizar
+let instanciasGraficosEmpresas = {};
 
-    const nPendente = tickets.filter(t => t.status === 'Pendente').length;
-    const nAtendimento = tickets.filter(t => t.status === 'Em Atendimento').length;
-    const nFinalizado = tickets.filter(t => t.status === 'Finalizado').length;
-    const nCancelado = tickets.filter(t => t.status === 'Cancelado').length;
+function renderizarGraficosPorEmpresa(tickets) {
+    const container = document.getElementById('containerGraficosEmpresas');
+    const modoVisao = document.getElementById('filtroModoVisao').value;
+    if (!container) return;
 
-    const config = (data, labels, colors) => ({
-        type: 'doughnut',
-        data: { 
-            labels: labels, 
-            datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, cutout: '75%' }] 
-        },
-        options: { 
-            plugins: { 
-                legend: { 
-                    display: true, position: 'bottom',
-                    labels: { usePointStyle: true, padding: 20, color: '#475569', font: { size: 11, weight: '600' } }
-                }
-            }, 
-            maintainAspectRatio: false 
+    // 1. Limpar container e destruir instâncias antigas
+    container.innerHTML = '';
+    Object.values(instanciasGraficosEmpresas).forEach(chart => chart.destroy());
+    instanciasGraficosEmpresas = {};
+
+    // 2. Agrupar tickets por empresa
+    const empresas = [...new Set(tickets.map(t => t.empresa))];
+
+    empresas.forEach((nomeEmpresa, index) => {
+        const ticketsDaEmpresa = tickets.filter(t => t.empresa === nomeEmpresa);
+        const canvasId = `chart-${index}`;
+
+        // 3. Criar o Card da Empresa no HTML
+        const cardHtml = `
+            <div class="chart-card-modern">
+                <div class="chart-header">
+                    <h3><i class="fas fa-building"></i> ${nomeEmpresa}</h3>
+                </div>
+                <div class="chart-body">
+                    <canvas id="${canvasId}"></canvas>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', cardHtml);
+
+        // 4. Preparar Dados de acordo com o filtro selecionado
+        let labels = [];
+        let data = [];
+        let colors = [];
+
+        if (modoVisao === 'tipo') {
+            const erro = ticketsDaEmpresa.filter(t => t.tipo === 'Erro').length;
+            const melhoria = ticketsDaEmpresa.filter(t => t.tipo === 'Melhoria').length;
+            const duvida = ticketsDaEmpresa.filter(t => t.tipo === 'Dúvida').length;
+            
+            labels = [`Erro (${erro})`, `Melhoria (${melhoria})`, `Dúvida (${duvida})`].filter((l, i) => [erro, melhoria, duvida][i] > 0);
+            data = [erro, melhoria, duvida].filter(v => v > 0);
+            colors = ['#ef4444', '#2563eb', '#f97316'];
+        } else {
+            const pendente = ticketsDaEmpresa.filter(t => t.status === 'Pendente').length;
+            const atendimento = ticketsDaEmpresa.filter(t => t.status === 'Em Atendimento').length;
+            const finalizado = ticketsDaEmpresa.filter(t => t.status === 'Finalizado').length;
+            const cancelado = ticketsDaEmpresa.filter(t => t.status === 'Cancelado').length;
+
+            labels = [`Pendente (${pendente})`, `Atendimento (${atendimento})`, `Finalizado (${finalizado})`, `Cancelado (${cancelado})`].filter((l, i) => [pendente, atendimento, finalizado, cancelado][i] > 0);
+            data = [pendente, atendimento, finalizado, cancelado].filter(v => v > 0);
+            colors = ['#2563eb', '#facc15', '#10b981', '#94a3b8'];
         }
+
+        // 5. Inicializar o gráfico para esta empresa
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        instanciasGraficosEmpresas[canvasId] = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, cutout: '70%' }]
+            },
+            options: {
+                plugins: {
+                    legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 10 } } }
+                },
+                maintainAspectRatio: false  
+            }
+        });
     });
-
-    const ctxPri = document.getElementById('chartPrioridade');
-    if (ctxPri) {
-        if (chartPrioridade) chartPrioridade.destroy();
-        chartPrioridade = new Chart(ctxPri, config(
-            [nBaixa, nMedia, nAlta], 
-            [`Baixa (${nBaixa})`, `Média (${nMedia})`, `Alta (${nAlta})`], 
-            ['#f97316', '#2563eb', '#ef4444']
-        ));
-    }
-
-    const ctxSta = document.getElementById('chartStatus');
-    if (ctxSta) {
-        if (chartStatus) chartStatus.destroy();
-        chartStatus = new Chart(ctxSta, config(
-            [nPendente, nAtendimento, nFinalizado, nCancelado], 
-            [`Pendente (${nPendente})`, `Atendimento (${nAtendimento})`, `Finalizado (${nFinalizado})`, `Cancelado (${nCancelado})`], 
-            ['#2563eb', '#facc15', '#10b981', '#94a3b8'] // Cinza para o cancelado
-        ));
-    }
 }
 
 /**
@@ -263,38 +290,6 @@ function aplicarFiltros() {
 }
 
 /**
- * RENDERIZAÇÃO DAS BARRAS DE PROGRESSO (Prioridade/SLA)
- */
-function renderizarBarrasProgresso(tickets) {
-    const container = document.getElementById('barChartContainer');
-    if (!container) return;
-
-    const total = tickets.length || 1;
-    const prioridadesConfig = [
-        { label: 'Alta', cor: '#ef4444' },
-        { label: 'Média', cor: '#2563eb' },
-        { label: 'Baixa', cor: '#f97316' }
-    ];
-
-    container.innerHTML = prioridadesConfig.map(prio => {
-        const qtd = tickets.filter(t => t.prioridade === prio.label).length;
-        const porcentagem = (qtd / total) * 100;
-
-        return `
-            <div class="bar-item-modern" style="margin-bottom: 18px;">
-                <div class="bar-info" style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px;">
-                    <strong style="color: #1e293b;">${prio.label}</strong>
-                    <span style="color: #64748b; font-weight: 600;">${qtd} (${porcentagem.toFixed(0)}%)</span>
-                </div>
-                <div class="bar-track" style="background: #f1f5f9; height: 8px; border-radius: 10px; overflow: hidden;">
-                    <div class="bar-fill" style="width: ${porcentagem}%; background: ${prio.cor}; height: 100%; transition: width 0.5s ease-in-out;"></div>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-/**
  * REMOVER USUÁRIO DO SISTEMA
  */
 async function deletarUsuario(email) {
@@ -317,58 +312,25 @@ async function deletarUsuario(email) {
     }
 }
 
-/**
- * BUSCAR MENSAGENS E ABRIR CHAT
- */
 async function abrirRespostaAdmin(id) {
-    ticketSelecionadoId = id; // Seta o ID na global que você já declarou
-    
+    ticketSelecionadoId = id;
     try {
         const response = await fetch(`http://localhost:3000/api/mensagens/${id}`);
         const mensagens = await response.json();
-
         const chatContainer = document.getElementById('historicoChatAdmin');
         if (!chatContainer) return;
 
-        chatContainer.innerHTML = mensagens.map(msg => {
-            const dataObjeto = new Date(msg.data);
-            const dataFormat = dataObjeto.toLocaleDateString('pt-BR');
-            const horaFormat = dataObjeto.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            
-            // Lógica de anexo baseada no seu sistema de arquivos/base64
-            const temAnexo = msg.anexo && msg.anexo.length > 50;
-            const htmlAnexoMsg = temAnexo ? `
-                <div style="margin-top:10px; border-top:1px dashed #e2e8f0; padding-top:8px;">
-                    <a href="${msg.anexo}" download="anexo_${msg.id}" style="font-size:12px; color:#2563eb; text-decoration:none; font-weight: 600;">
-                        <i class="fas fa-download"></i> Baixar Arquivo
-                    </a>
-                </div>` : '';
+        chatContainer.innerHTML = mensagens.map(msg => `
+            <div class="interaction-card ${msg.email_autor === usuarioAtivo.email ? 'msg-me' : 'msg-other'}">
+                <div class="msg-header"><strong>${msg.autor_display}</strong></div>
+                <p>${msg.texto}</p>
+            </div>`).join('');
 
-            // Verifica se a mensagem é do admin logado ou do cliente
-            const isMe = msg.email_autor === usuarioAtivo.email;
-
-            return `
-                <div class="interaction-card ${isMe ? 'msg-me' : 'msg-other'}">
-                    <div class="msg-header">
-                        <strong style="font-size: 12px;">${msg.autor_display}</strong>
-                        <span style="font-size: 10px; color: #94a3b8;">${dataFormat} às ${horaFormat}</span>
-                    </div>
-                    <p style="margin: 0; font-size: 14px; line-height: 1.4;">${msg.texto}</p>
-                    ${htmlAnexoMsg}
-                </div>
-            `;
-        }).join('');
-
-        // Atualiza o ID no título do chat e faz a troca de telas
         document.getElementById('idTicketResponder').innerText = id;
         document.getElementById('cardTabelaTickets').style.display = 'none'; 
         document.getElementById('containerInteracaoAdmin').style.display = 'block'; 
-        
         window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    } catch (error) {
-        console.error("Erro ao carregar chat:", error);
-    }
+    } catch (e) { console.error("Erro no chat:", e); }
 }
 
 /**
@@ -412,16 +374,22 @@ async function enviarRespostaAdmin() {
 /**
  * VOLTAR PARA A TABELA (FECHAR CHAT)
  */
-function fecharAreaResposta() {
-    document.getElementById('containerInteracaoAdmin').style.display = 'none';
-    document.getElementById('cardTabelaTickets').style.display = 'block';
-    carregarEstatisticas(); // Recarrega para ver se o status mudou para 'Em Atendimento'
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+function fecharAreaResposta() { 
+    document.getElementById('containerInteracaoAdmin').style.display = 'none'; 
+    document.getElementById('cardTabelaTickets').style.display = 'block'; 
+    carregarEstatisticas();
 }
 
+/**
+ * ATUALIZAÇÃO DA INTERFACE
+ */
 function atualizarElementosInterface(dados) {
-    renderizarGraficosDonut(dados);
-    renderizarBarrasProgresso(dados);
+    console.log("GESISTEC: Atualizando interface com", dados.length, "tickets.");
+    
+    // 1. Gera os gráficos dinâmicos por empresa
+    renderizarGraficosPorEmpresa(dados);
+    
+    // 2. Preenche a tabela de chamados
     renderizarTabelaGeral(dados);
 }
 
@@ -449,13 +417,21 @@ function prepararAnexoAdmin(input) {
 /**
  * ENCERRAR SESSÃO E SAIR
  */
-function logout() {
-    // Remove o token/objeto de sessão do armazenamento local
-    localStorage.removeItem('sessao_ativa');
-    
-    // Redireciona para a página de login
-    window.location.href = 'index.html';
+function logout() { 
+    localStorage.removeItem('sessao_ativa'); 
+    window.location.href = 'index.html'; 
 }
 
-// Inicialização automática
-carregarEstatisticas();
+/**
+ * INICIALIZAÇÃO DO SISTEMA
+ */
+async function inicializarDashboard() {
+    // 1. Carrega os dados do MySQL
+    await carregarEstatisticas();
+    
+    // 2. Garante que a Dashboard apareça primeiro
+    navegarMenu('dashboardView');
+}
+
+// Inicia o processo
+inicializarDashboard();
