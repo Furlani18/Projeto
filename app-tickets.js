@@ -119,8 +119,8 @@ async function enviarRespostaCliente(ticketId) {
             anexoTemporario = null;
             if (document.getElementById('file-preview-name')) document.getElementById('file-preview-name').innerText = "";
             
-            const btnRef = document.querySelector(`button[onclick*="irParaInteracao(${ticketId}"]`);
-            if (btnRef) irParaInteracao(ticketId, btnRef, true); 
+            const btnRef = document.querySelector(`button[onclick*="irParaInteracao(${ticketId},"]`);
+            if (btnRef) irParaInteracao(ticketId, btnRef, true);
         }
     } catch (error) {
         alert("Não foi possível enviar a resposta.");
@@ -199,6 +199,14 @@ async function irParaInteracao(id, btn, forcarAbertura = false) {
     }
 }
 
+function fecharInline(button) {
+    const row = button.closest('.row-interacao');
+    if (row) {
+        row.remove();
+    }
+    ticketAbertoId = null;
+}
+
 /**
  * Listagem de Tickets do Banco
  */
@@ -210,7 +218,7 @@ async function carregarTickets() {
         const meusChamados = chamadosDoBanco.map(ticket => ({
             id: ticket.id,
             assunto: ticket.assunto,
-            tipo: ticket.nro_tipo === 1 ? 'Erro' : (ticket.nro_tipo === 3 ? 'Melhoria' : 'Dúvida'), // Ajustado para bater com seu HTML
+            tipo: ticket.nro_tipo === 1 ? 'Erro' : (ticket.nro_tipo === 2 ? 'Melhoria' : 'Dúvida'),
             prioridade: ticket.prioridade === 'A' ? 'Alta' : (ticket.prioridade === 'M' ? 'Média' : 'Baixa'),
             status: ticket.status === 'A' ? 'Pendente' : 'Finalizado',
             dataCriacao: ticket.data,
@@ -226,29 +234,34 @@ async function carregarTickets() {
 function renderizarLista(ticketsParaExibir) {
     const tabela = document.getElementById('tabelaTickets');
     if(!tabela) return;
-    tabela.innerHTML = ticketsParaExibir.map(ticket => `
+
+    tabela.innerHTML = ticketsParaExibir.map(ticket => {
+        // Normalização simplificada para gerar a classe do badge
+        const tipoClass = ticket.tipo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const badgeClass = tipoClass.replace(/[^a-z0-9]/g, '');
+        
+        // Determina a classe do status
+        const statusClass = ticket.status === 'Pendente' ? 'pendente' : 'finalizado';
+
+        // O RETORNO PRECISA SER UMA STRING ÚNICA ATÉ O FINAL DA TR
+        return `
         <tr>
             <td><strong>#${ticket.id}</strong></td>
-            <td><span class="type-badge ${ticket.tipo.toLowerCase()}">${ticket.tipo}</span></td>
+            <td><span class="type-badge type-${badgeClass}">${ticket.tipo}</span></td>
             <td>${ticket.assunto}</td>
             <td>${ticket.prioridade}</td>
-            <td><span class="badge ${ticket.status === 'Pendente' ? 'pendente' : 'finalizado'}">${ticket.status}</span></td>
+            <td><span class="badge ${statusClass}">${ticket.status}</span></td>
             <td>
-                <button onclick="irParaInteracao(${ticket.id}, this)" class="btn-edit"><i class="fas fa-external-link-alt"></i></button>
-                <button onclick="excluirTicket(${ticket.id})" class="btn-delete"><i class="fas fa-trash"></i></button>
+                <button onclick="irParaInteracao(${ticket.id}, this)" class="btn-edit">
+                    <i class="fas fa-external-link-alt"></i>
+                </button>
+                <button onclick="excluirTicket(${ticket.id})" class="btn-delete">
+                    <i class="fas fa-trash"></i>
+                </button>
             </td>
         </tr>
-    `).join('');
-}
-
-async function excluirTicket(id) {
-    if (!confirm("Deseja realmente excluir este chamado?")) return;
-    try {
-        const response = await fetch(`http://localhost:3000/api/tickets/${id}`, { method: 'DELETE' });
-        if (response.ok) carregarTickets();
-    } catch (error) {
-        alert("Erro ao excluir.");
-    }
+        `; 
+    }).join(''); // O join vem aqui, APÓS fechar o map
 }
 
 // Auxiliares Modal
