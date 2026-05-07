@@ -278,6 +278,52 @@ async function carregarUsuarios() {
     }
 }
 
+function abrirModalUsuario() {
+    const modal = document.getElementById('modalUsuario');
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+}
+
+function fecharModalUsuario() {
+    const modal = document.getElementById('modalUsuario');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+async function salvarUsuario(event) {
+    event.preventDefault();
+    const nome = document.getElementById('userName').value.trim();
+    const email = document.getElementById('userEmail').value.trim();
+    const senha = document.getElementById('userPass').value.trim();
+    const perfil = document.getElementById('userPerfil').value;
+
+    if (!nome || !email || !senha) {
+        alert('Preencha todos os campos para cadastrar o usuário.');
+        return;
+    }
+
+    try {
+        const response = await fetch('http://localhost:3000/api/usuarios', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome, email, senha, perfil })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Erro ao cadastrar usuário.');
+        }
+
+        fecharModalUsuario();
+        document.getElementById('formUsuario').reset();
+        carregarUsuarios();
+    } catch (error) {
+        alert(error.message || 'Não foi possível cadastrar o usuário.');
+    }
+}
+
 function aplicarFiltros() {
     const tipoFiltro = document.getElementById('filterTipo').value;
     const statusFiltro = document.getElementById('filterStatus').value;
