@@ -75,11 +75,7 @@
                         </div>
                     </div>
                     <div class="detail-actions">
-                        <button class="btn-action-icon"><i class="far fa-star"></i></button>
-                        <button class="btn-action">Compartilhar</button>
-                        <button class="btn-action">Editar</button>
-                        <button class="btn-action primary-action" onclick="document.getElementById('reply-text').focus()">Responder</button>
-                        <button class="btn-action">Associar</button>
+                        <button class="btn-action primary-action" onclick="ativarResposta()">Responder</button>
                         <div class="action-divider"></div>
                         <button class="btn-action close-action" onclick="fecharInline(this)">Fechar</button>
                     </div>
@@ -87,17 +83,6 @@
 
                 <div class="detail-body">
                     <div class="main-info">
-                        <nav class="detail-tabs">
-                            <button class="active">Detalhes</button>
-                            <button>Tickets relacionados</button>
-                            <button>Tarefas</button>
-                            <button>Ativos</button>
-                            <button>Associações</button>
-                            <button>Aprovações <span class="tab-badge">2</span></button>
-                            <button>Atividade</button>
-                            <button>Resolução</button>
-                        </nav>
-                        
                         <div class="content-scroll-area">
                             <p class="content-label">Mais detalhes da solicitação:</p>
                             <p id="descDoc" class="main-description">Carregando...</p>
