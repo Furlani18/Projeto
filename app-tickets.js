@@ -207,6 +207,13 @@ function fecharInline(button) {
     ticketAbertoId = null;
 }
 
+function ativarResposta() {
+    const reply = document.getElementById('reply-text');
+    if (!reply) return;
+    reply.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    reply.focus();
+}
+
 /**
  * Listagem de Tickets do Banco
  */
