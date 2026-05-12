@@ -270,7 +270,13 @@ async function carregarTickets() {
             assunto: ticket.assunto,
             tipo: ticket.nro_tipo === 1 ? 'Erro' : (ticket.nro_tipo === 2 ? 'Melhoria' : 'Dúvida'),
             prioridade: ticket.prioridade === 'A' ? 'Alta' : (ticket.prioridade === 'M' ? 'Média' : 'Baixa'),
-            status: ticket.status === 'A' ? 'Pendente' : 'Finalizado',
+
+status: ticket.status === 'P' ? 'Pendente' : 
+       (ticket.status === 'E' ? 'Em Atendimento' : 
+       (ticket.status === 'V' ? 'Vencido' : 
+       (ticket.status === 'F' ? 'Finalizado' : 
+       (ticket.status === 'C' ? 'Cancelado' : 'Outro')))),
+            
             dataCriacao: ticket.data,
             usuario: ticket.email_usuario
         }));
@@ -312,6 +318,27 @@ function renderizarLista(ticketsParaExibir) {
         </tr>
         `; 
     }).join(''); // O join vem aqui, APÓS fechar o map
+}
+
+async function excluirTicket(ticketId) {
+    const confirmacao = confirm('Tem certeza que deseja excluir este ticket? Esta ação não pode ser desfeita.');
+    if (!confirmacao) return;
+
+    try {
+        const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showNotification('Ticket excluído com sucesso.', 'success');
+            carregarTickets();
+        } else {
+            const erro = await response.json();
+            showNotification(erro.error || 'Não foi possível excluir o ticket.', 'error');
+        }
+    } catch (error) {
+        showNotification('Não foi possível conectar ao servidor. Verifique se ele está em execução.', 'error');
+    }
 }
 
 // Auxiliares Modal
