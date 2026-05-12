@@ -4,12 +4,37 @@ const ticketId = parseInt(urlParams.get('id'));
 
 let ticketAtual = null;
 
+function ensureNotificationContainer() {
+    let container = document.getElementById('gesistec-toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'gesistec-toast-container';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+    return container;
+}
+
+function showNotification(message, type = 'info', duration = 4500) {
+    const container = ensureNotificationContainer();
+    const toast = document.createElement('div');
+    toast.className = `toast-message toast-${type}`;
+    toast.innerText = message;
+    container.appendChild(toast);
+    window.requestAnimationFrame(() => toast.classList.add('toast-show'));
+    setTimeout(() => {
+        toast.classList.remove('toast-show');
+        toast.classList.add('toast-hide');
+        toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+    }, duration);
+}
+
 function carregarDadosTicket() {
     const lista = JSON.parse(localStorage.getItem('tickets_gesistec')) || [];
     ticketAtual = lista.find(t => t.id === ticketId);
 
     if (!ticketAtual) {
-        alert("Ticket não encontrado!");
+        showNotification("Ticket não encontrado. Atualize a página e tente novamente.", 'error');
         voltar();
         return;
     }
@@ -32,7 +57,7 @@ function enviarResposta() {
     const texto = campo.value;
 
     if (!texto && (!inputFile || inputFile.files.length === 0)) {
-        alert("Digite uma mensagem ou adicione um anexo!");
+        showNotification("Digite uma mensagem ou anexe um arquivo para prosseguir.", 'warning');
         return;
     }
 
