@@ -248,3 +248,37 @@ body {
     }
     body { background-color: var(--white); padding: 0; }
 }
+
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.toast-message {
+    min-width: 250px;
+    max-width: 420px;
+    padding: 14px 18px;
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateX(16px);
+    transition: transform 0.25s ease, opacity 0.25s ease;
+    pointer-events: auto;
+}
+
+.toast-show { opacity: 1; transform: translateX(0); }
+.toast-hide { opacity: 0; transform: translateX(16px); }
+
+.toast-success { background: #0f9d58; }
+.toast-error { background: #d93025; }
+.toast-warning { background: #f9ab00; color: #111; }
+.toast-info { background: #1a73e8; }
