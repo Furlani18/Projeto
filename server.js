@@ -123,7 +123,29 @@ app.post('/api/tickets', (req, res) => {
         });
     });
 });
+app.delete('/api/tickets/:id', (req, res) => {
+    const ticketId = req.params.id;
 
+    db.query('DELETE FROM atende WHERE NRO_TICKET = ?', [ticketId], (err) => {
+        if (err) {
+            console.error('Erro ao excluir atendimentos do ticket:', err.message);
+            return res.status(500).json({ error: err.message });
+        }
+
+        db.query('DELETE FROM ticket WHERE NRO_TICKET = ?', [ticketId], (ticketErr, result) => {
+            if (ticketErr) {
+                console.error('Erro ao excluir ticket:', ticketErr.message);
+                return res.status(500).json({ error: ticketErr.message });
+            }
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: 'Ticket não encontrado.' });
+            }
+
+            res.json({ message: 'Ticket excluído com sucesso.' });
+        });
+    });
+});
 // ==========================================
 // 3. MENSAGENS / CHAT
 // ==========================================
