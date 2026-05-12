@@ -404,30 +404,212 @@ body {
     box-shadow: 0 15px 30px rgba(0,0,0,0.1);
 }
 
-/* 5. Área de Resposta Admin */
-.reply-container-admin {
-    background: var(--white);
-    border-radius: 16px;
+/* 5. Área de Resposta e Chat */
+#containerInteracaoAdmin {
+    display: grid;
+    gap: 24px;
+}
+
+#historicoChatAdmin {
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    border: 1px solid rgba(37, 99, 235, 0.1);
+    border-radius: 28px;
+    box-shadow: 0 24px 50px rgba(15, 23, 42, 0.07);
+    padding: 26px;
+    min-height: 360px;
+    overflow-y: auto;
+}
+
+#historicoChatAdmin::-webkit-scrollbar {
+    width: 10px;
+}
+
+#historicoChatAdmin::-webkit-scrollbar-thumb {
+    background: rgba(37, 99, 235, 0.18);
+    border-radius: 999px;
+}
+
+.interaction-card {
+    max-width: 74%;
+    padding: 18px 22px;
+    border-radius: 28px;
+    margin-bottom: 18px;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+    position: relative;
+    word-break: break-word;
+    line-height: 1.75;
+}
+
+.interaction-card.msg-other {
+    background: #dcfce7;
+    margin-right: auto;
+    border-bottom-left-radius: 8px;
+}
+
+.interaction-card.msg-me {
+    background: #dbeafe;
+    margin-left: auto;
+    border-bottom-right-radius: 8px;
+}
+
+.interaction-card .msg-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.interaction-card .msg-header strong {
+    font-weight: 800;
+}
+
+.interaction-card p {
+    margin: 0;
+    color: #334155;
+    font-size: 0.95rem;
+    white-space: pre-wrap;
+}
+
+.reply-card-modern {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border-radius: 26px;
     padding: 24px;
-    margin-bottom: 30px;
-    box-shadow: var(--soft-shadow);
-    border-left: 4px solid var(--admin-blue);
+    border: 1px solid rgba(37, 99, 235, 0.12);
+    box-shadow: 0 24px 40px rgba(15, 23, 42, 0.06);
 }
 
-.reply-input-admin {
+.reply-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 22px;
+}
+
+.ticket-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1rem;
+    color: #0f172a;
+    font-weight: 700;
+}
+
+.ticket-info i {
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    border-radius: 14px;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--admin-blue);
+}
+
+.btn-back-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 18px;
+    border-radius: 16px;
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    background: #ffffff;
+    color: var(--admin-blue);
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-back-modern:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.12);
+}
+
+.reply-body {
+    display: grid;
+    gap: 16px;
+}
+
+.reply-textarea {
     width: 100%;
-    border: 1.5px solid var(--border-color);
+    min-height: 140px;
+    border-radius: 18px;
+    border: 1.5px solid rgba(148, 163, 184, 0.6);
+    padding: 18px 20px;
+    font-size: 0.95rem;
+    color: #102a43;
+    resize: vertical;
+    box-shadow: inset 0 2px 8px rgba(15, 23, 42, 0.04);
     background: #f8fafc;
-    border-radius: 12px;
-    padding: 15px;
-    font-size: 14px;
-    outline: none;
-    min-height: 100px;
-    box-sizing: border-box;
-    transition: 0.2s;
+    transition: border-color 0.2s ease, background 0.2s ease;
 }
 
-.reply-input-admin:focus { border-color: var(--admin-blue); background: #fff; }
+.reply-textarea:focus {
+    outline: none;
+    border-color: rgba(37, 99, 235, 0.35);
+    background: #ffffff;
+}
+
+.reply-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: center;
+}
+
+.attachment-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(37, 99, 235, 0.06);
+    border-radius: 16px;
+    padding: 12px 14px;
+    min-height: 52px;
+}
+
+.btn-attach-modern {
+    border: none;
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--admin-blue);
+    border-radius: 14px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.btn-attach-modern:hover {
+    background: rgba(37, 99, 235, 0.18);
+}
+
+.file-name-preview {
+    color: #475569;
+    font-size: 0.9rem;
+    opacity: 0.85;
+}
+
+.btn-send-modern {
+    border: none;
+    background: var(--btn-gradient);
+    color: #fff;
+    border-radius: 16px;
+    padding: 14px 22px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 12px 22px rgba(37, 99, 235, 0.18);
+}
+
+.btn-send-modern:hover {
+    transform: translateY(-1px);
+}
+
+.reply-card-modern[style*="display: none"] + .card {
+    margin-top: 0;
+}
 
 /* 6. MODAL SUPREMO (z-index: 9999) */
 .modal {
@@ -895,6 +1077,40 @@ body {
 .status-pill.pendente { background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); color: #c2410c; }
 .status-pill.em-atendimento { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); color: #1d4ed8; }
 .status-pill.finalizado { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); color: #15803d; }
+
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.toast-message {
+    min-width: 250px;
+    max-width: 420px;
+    padding: 14px 18px;
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateX(16px);
+    transition: transform 0.25s ease, opacity 0.25s ease;
+    pointer-events: auto;
+}
+
+.toast-show { opacity: 1; transform: translateX(0); }
+.toast-hide { opacity: 0; transform: translateX(16px); }
+
+.toast-success { background: #0f9d58; }
+.toast-error { background: #d93025; }
+.toast-warning { background: #f9ab00; color: #111; }
+.toast-info { background: #1a73e8; }
 
 /* Botão de Ação Moderno */
 .btn-action-icon {
