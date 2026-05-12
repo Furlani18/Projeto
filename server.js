@@ -95,6 +95,35 @@ app.get('/api/tickets', (req, res) => {
     });
 });
 
+app.post('/api/tickets', (req, res) => {
+    const { assunto, prioridade, login, tipo_id, anexo } = req.body;
+    if (!assunto || !login || !tipo_id) {
+        return res.status(400).json({ error: 'Assunto, login e tipo de chamado são obrigatórios.' });
+    }
+
+    const sqlInsertTicket = `INSERT INTO ticket (DES_TICKET, DES_PRIORIDADE, DES_LOGIN, DES_STATUS, NRO_TIPO, DAT_ABERTURA) VALUES (?, ?, ?, 'Pendente', ?, NOW())`;
+    db.query(sqlInsertTicket, [assunto, prioridade || 'Média', login, tipo_id], (ticketErr, ticketResult) => {
+        if (ticketErr) {
+            console.error('Erro ao criar ticket:', ticketErr.message);
+            return res.status(500).json({ error: ticketErr.message });
+        }
+
+        const ticketId = ticketResult.insertId;
+        if (!anexo) {
+            return res.json({ message: 'Chamado aberto com sucesso!', id: ticketId });
+        }
+
+        const sqlInsertAtende = `INSERT INTO atende (DAT_ATENDE, DES_ATENDE, FLG_ESTADO, DOC_ANEXO, NRO_TICKET, DES_LOGIN) VALUES (NOW(), ?, 'A', ?, ?, ?)`;
+        db.query(sqlInsertAtende, ['Anexo enviado no primeiro contato', anexo, ticketId, login], (atendeErr) => {
+            if (atendeErr) {
+                console.error('Erro ao salvar anexo inicial:', atendeErr.message);
+                return res.status(500).json({ error: atendeErr.message });
+            }
+            res.json({ message: 'Chamado aberto com sucesso!', id: ticketId });
+        });
+    });
+});
+
 // ==========================================
 // 3. MENSAGENS / CHAT
 // ==========================================
@@ -151,26 +180,30 @@ app.post('/api/mensagens', (req, res) => {
 // ==========================================
 
 app.get('/api/usuarios', (req, res) => {
-    const sql = `SELECT DES_NOME as nome, DES_LOGIN as email, FLG_TIP_COL as tipo_flag FROM colaborador`;
+    const sql = `SELECT c.DES_NOME as nome, c.DES_LOGIN as email, c.FLG_TIP_COL as tipo_flag, e.NOM_EMPRESA as empresa FROM colaborador c LEFT JOIN empresa e ON c.NRO_EMPRESA = e.NRO_EMPRESA`;
     db.query(sql, (err, data) => {
         if (err) return res.status(500).json(err);
         
         const listaTraduzida = data.map(user => ({
             nome: user.nome,
             email: user.email,
-            perfil: user.tipo_flag === 'A' ? 'Admin' : user.tipo_flag === 'E' ? 'Colaborador' : 'Cliente'
+            perfil: user.tipo_flag === 'A' ? 'Admin' : user.tipo_flag === 'E' ? 'Colaborador' : 'Cliente',
+            empresa: user.empresa || '---'
         }));
         res.json(listaTraduzida);
     });
 });
 
 app.post('/api/usuarios', (req, res) => {
-    const { nome, email, senha, perfil } = req.body;
+    const { nome, email, senha, perfil, nro_empresa } = req.body;
     let flag = perfil === 'admin' ? 'A' : (perfil === 'colaborador' ? 'E' : 'C');
-    let nroEmpresa = (perfil === 'cliente') ? 2 : 1; 
+
+    if (!nome || !email || !senha || !nro_empresa) {
+        return res.status(400).json({ error: 'Nome, email, senha e empresa são obrigatórios.' });
+    }
 
     const sql = `INSERT INTO colaborador (DES_NOME, DES_LOGIN, DES_SENHA, NRO_EMPRESA, FLG_TIP_COL) VALUES (?, ?, ?, ?, ?)`;
-    db.query(sql, [nome, email, senha, nroEmpresa, flag], (err, result) => {
+    db.query(sql, [nome, email, senha, nro_empresa, flag], (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ message: "Usuário gravado com sucesso!" });
     });
@@ -183,6 +216,69 @@ app.delete('/api/usuarios/:email', (req, res) => {
     });
 });
 
+// ==========================================
+// 5. GESTÃO DE EMPRESAS
+// ==========================================
+
+app.get('/api/empresas', (req, res) => {
+    const sql = `SELECT NRO_EMPRESA as id, NOM_EMPRESA as nome, NRO_CNPJ as cnpj, NOM_CIDADE as cidade, DES_ENDERECO as endereco, NRO_CEP as cep, FLG_EMP as tipo FROM empresa ORDER BY NRO_EMPRESA DESC`;
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
+app.post('/api/empresas', (req, res) => {
+    const { nome, cnpj, cidade, endereco, cep, flg_emp } = req.body;
+    if (!nome || !cnpj || !cidade || !endereco || !cep || !flg_emp) {
+        return res.status(400).json({ error: 'Todos os campos da empresa são obrigatórios.' });
+    }
+    const sql = `INSERT INTO empresa (NOM_EMPRESA, NRO_CNPJ, NOM_CIDADE, DES_ENDERECO, NRO_CEP, FLG_EMP) VALUES (?, ?, ?, ?, ?, ?)`;
+    db.query(sql, [nome, cnpj, cidade, endereco, cep, flg_emp], (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Empresa cadastrada com sucesso!', id: result.insertId });
+    });
+});
+
+app.delete('/api/empresas/:id', (req, res) => {
+    const sql = `DELETE FROM empresa WHERE NRO_EMPRESA = ?`;
+    db.query(sql, [req.params.id], (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Empresa removida com sucesso!' });
+    });
+});
+
+// ==========================================
+// 6. GESTÃO DE TIPOS DE CHAMADOS
+// ==========================================
+
+app.get('/api/tipos-ticket', (req, res) => {
+    const sql = `SELECT NRO_TIPO as id, DES_TIPO as nome, QTD_DIAS as prazo_dias FROM tipo_ticket ORDER BY NRO_TIPO DESC`;
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
+app.post('/api/tipos-ticket', (req, res) => {
+    const { nome, prazo_dias } = req.body;
+    if (!nome || prazo_dias == null) {
+        return res.status(400).json({ error: 'Nome e prazo são obrigatórios.' });
+    }
+    const sql = `INSERT INTO tipo_ticket (DES_TIPO, QTD_DIAS) VALUES (?, ?)`;
+    db.query(sql, [nome, prazo_dias], (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Tipo de chamado cadastrado com sucesso!', id: result.insertId });
+    });
+});
+
+app.delete('/api/tipos-ticket/:id', (req, res) => {
+    const sql = `DELETE FROM tipo_ticket WHERE NRO_TIPO = ?`;
+    db.query(sql, [req.params.id], (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Tipo de chamado removido com sucesso!' });
+    });
+});
 
 // ATUALIZAR STATUS DO TICKET (Cancelar ou Finalizar)
 app.put('/api/tickets/:id/status', (req, res) => {
