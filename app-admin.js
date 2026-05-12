@@ -113,31 +113,41 @@ function navegarMenu(viewId) {
 }
 
 /**
- * DASHBOARD E TABELA: BUSCA DO BANCO (MySQL)
+ * BUSCA DE DADOS (MySQL) - Versão Corrigida
+ */
+/**
+ * BUSCA DE DADOS (MySQL)
  */
 async function carregarEstatisticas() {
     try {
         const response = await fetch('http://localhost:3000/api/tickets');
         const dadosBrutos = await response.json();
+        
+        if (!Array.isArray(dadosBrutos)) {
+            console.warn("Dados recebidos não são um array:", dadosBrutos);
+            return;
+        }
 
-        if (!Array.isArray(dadosBrutos)) return;
-
+        // Mapeamento seguindo suas 5 regras estritas do banco
         listaTicketsGlobal = dadosBrutos.map(t => ({
             id: t.id,
             assunto: t.assunto,
             usuario: t.email_usuario, 
             empresa: t.nome_empresa || "Empresa não cadastrada",
-            status: t.status === 'A' ? 'Pendente' : 
+            
+            // Suas 5 regras: P, E, V, F e C (o último)
+            status: t.status === 'P' ? 'Pendente' : 
                    (t.status === 'E' ? 'Em Atendimento' : 
-                   (t.status === 'C' ? 'Cancelado' : 'Finalizado')),
+                   (t.status === 'V' ? 'Vencido' : 
+                   (t.status === 'F' ? 'Finalizado' : 'Cancelado'))),
+
             prioridade: t.prioridade === 'A' ? 'Alta' : (t.prioridade === 'M' ? 'Média' : 'Baixa'),
             data: t.data,
             tipo: t.nro_tipo === 1 ? 'Erro' : (t.nro_tipo === 2 ? 'Melhoria' : 'Dúvida'),
             prazo_dias: t.prazo_dias || 0 
         }));
 
-        atualizarElementosInterface(listaTicketsGlobal);
-       
+        aplicarFiltros(); 
     } catch (error) {
         console.error("Erro ao carregar dados do MySQL:", error);
     }
@@ -605,15 +615,29 @@ async function deletarTipo(id) {
     }
 }
 
+/**
+ * FILTRAGEM SEGURA (RESOLVE O ERRO DO NULL)
+ */
 function aplicarFiltros() {
-    const tipoFiltro = document.getElementById('filterTipo').value;
-    const statusFiltro = document.getElementById('filterStatus').value;
-    let listaFiltrada = [...listaTicketsGlobal];
+    // Verificamos se os elementos existem antes de ler o .value
+    const elStatus = document.getElementById('filterStatus');
+    const elTipo = document.getElementById('filterTipo');
 
-    if (tipoFiltro !== 'todos') listaFiltrada = listaFiltrada.filter(t => t.tipo === tipoFiltro);
-    if (statusFiltro !== 'todos') listaFiltrada = listaFiltrada.filter(t => t.status === statusFiltro);
+    const statusFiltro = elStatus ? elStatus.value : 'todos';
+    const tipoFiltro = elTipo ? elTipo.value : 'todos';
 
-    atualizarElementosInterface(listaFiltrada);
+    let filtrados = [...listaTicketsGlobal];
+
+    // Só filtra se os elementos de filtro realmente estiverem no HTML
+    if (statusFiltro !== 'todos') {
+        filtrados = filtrados.filter(t => t.status === statusFiltro);
+    }
+    if (tipoFiltro !== 'todos') {
+        filtrados = filtrados.filter(t => t.tipo === tipoFiltro);
+    }
+
+    // Renderiza o que sobrou
+    atualizarElementosInterface(filtrados);
 }
 
 /**
