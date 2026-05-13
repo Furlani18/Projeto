@@ -303,15 +303,29 @@ app.delete('/api/tipos-ticket/:id', (req, res) => {
 });
 
 // ATUALIZAR STATUS DO TICKET (Cancelar ou Finalizar)
-app.put('/api/tickets/:id/status', (req, res) => {
+// ATUALIZAÇÃO COMPLETA DO TICKET (Assunto, Prioridade e Status)
+app.put('/api/tickets/:id', (req, res) => {
     const { id } = req.params;
-    const { novoStatus } = req.body; // 'C' para Cancelado, 'F' para Finalizado
+    const { assunto, prioridade, status } = req.body;
 
-    const sql = `UPDATE ticket SET DES_STATUS = ? WHERE NRO_TICKET = ?`;
+    // Sincronizado com os nomes das colunas da sua tabela 'ticket'
+    const sql = `UPDATE ticket 
+                 SET DES_TICKET = ?, 
+                     DES_PRIORIDADE = ?, 
+                     DES_STATUS = ? 
+                 WHERE NRO_TICKET = ?`;
 
-    db.query(sql, [novoStatus, id], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: "Status atualizado com sucesso!" });
+    db.query(sql, [assunto, prioridade, status, id], (err, result) => {
+        if (err) {
+            console.error("Erro ao atualizar ticket:", err.message);
+            return res.status(500).json({ error: err.message });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: "Ticket não encontrado." });
+        }
+
+        res.json({ message: "Ticket atualizado com sucesso!" });
     });
 });
 
