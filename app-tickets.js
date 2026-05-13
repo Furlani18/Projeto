@@ -359,6 +359,47 @@ function removerPreviewTicket() {
     if (sizeLabel) sizeLabel.innerText = '';
 }
 
+async function salvarEdicaoInline(id) {
+    // 1. Identifica o ID (vence o erro de undefined)
+    const ticketId = id || ticketAbertoId;
+
+    if (!ticketId || ticketId === "undefined") {
+        showNotification("Erro: ID do ticket não identificado.", "error");
+        return;
+    }
+
+    // 2. Captura os elementos do HTML que você mandou
+    const elPrio = document.getElementById('editPrio');
+    const elStatus = document.getElementById('editStatus');
+    const elAssunto = document.getElementById('descDoc'); // O assunto costuma ser o texto da interacão
+
+    const novaPrioridade = elPrio ? elPrio.value : 'M';
+    const novoStatus = elStatus ? elStatus.value : 'P';
+    const assuntoAtual = elAssunto ? elAssunto.innerText : '';
+
+    try {
+        // Envia para a rota de atualização
+        const response = await fetch(`http://localhost:3000/api/tickets/${ticketId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                assunto: assuntoAtual,
+                prioridade: novaPrioridade,
+                status: novoStatus // Agora enviando a letra correta (P, F, etc)
+            })
+        });
+
+        if (response.ok) {
+            showNotification("Ticket atualizado com sucesso!", "success");
+            carregarTickets(); // Recarrega a tabela principal
+        } else {
+            showNotification("Erro ao salvar alterações.", "error");
+        }
+    } catch (error) {
+        console.error("Erro FETCH:", error);
+    }
+}
+
 function inicializarPreviewAnexoTicket() {
     const ticketFileInput = document.getElementById('anexoTicket');
     if (!ticketFileInput) return;
