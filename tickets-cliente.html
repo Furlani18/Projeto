@@ -150,25 +150,32 @@
                         </div>
 
                         <div class="side-card">
-                            <div class="card-header-sm"><i class="far fa-comments"></i> <span>Colaborar</span></div>
-                            <button class="btn-teams-side"><i class="fab fa-microsoft-teams"></i> Teams <i class="fas fa-caret-down"></i></button>
-                            <button class="btn-add-collab"><i class="fas fa-plus-circle"></i> Começar novo</button>
-                        </div>
-
-                        <div class="side-card">
-                            <div class="card-header-sm"><i class="far fa-list-alt"></i> <span>Propriedades</span></div>
-                            <div class="edit-fields-grid">
-                                <div class="field">
-                                    <label>Prioridade *</label>
-                                    <select id="editPrio"><option>Baixa</option><option selected>Média</option><option>Alta</option></select>
-                                </div>
-                                <div class="field">
-                                    <label>Status</label>
-                                    <select id="editStatus"><option value="Pendente">Pendente</option><option value="Finalizado">Finalizado</option></select>
-                                </div>
-                                <button class="btn-update-action" onclick="salvarEdicaoInline()">Atualizar</button>
-                            </div>
-                        </div>
+    <div class="card-header-sm"><i class="far fa-list-alt"></i> <span>Propriedades</span></div>
+    <div class="edit-fields-grid">
+        <div class="field">
+            <label>Prioridade *</label>
+            <!-- Usamos IDs fixos para facilitar a captura na interação -->
+            <select id="editPrio">
+                <option value="B">Baixa</option>
+                <option value="M" selected>Média</option>
+                <option value="A">Alta</option>
+            </select>
+        </div>
+        <div class="field">
+            <label>Status</label>
+            <select id="editStatus">
+                <option value="P">Pendente</option>
+                <option value="E">Em Atendimento</option>
+                <option value="F">Finalizado</option>
+                <option value="C">Cancelado</option>
+            </select>
+        </div>
+        <!-- Se estiver no template de interação, o ID vem do texto que já está na tela -->
+        <button onclick="salvarEdicaoInline(document.getElementById('ticketIdDisplay').innerText)" class="btn-save">
+            Atualizar
+        </button>
+    </div>
+</div>
                     </aside>
                 </div>
             </div>
