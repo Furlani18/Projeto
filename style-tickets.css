@@ -25,7 +25,7 @@
 
 body {
     margin: 0;
-    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    font-family: Arial, sans-serif;
     background: linear-gradient(180deg, #edf4fb 0%, #f7fbff 100%);
     color: var(--text-main);
     line-height: 1.6;
@@ -125,7 +125,8 @@ body::before {
     display: flex; 
     gap: 0.85rem;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;   /* ← mantém tudo em linha */
+    flex-shrink: 0;      /* ← impede que o grupo encolha */
 }
 
 .top-nav button {
@@ -989,7 +990,7 @@ td {
     border: 1px solid rgba(148, 163, 184, 0.35);
     border-radius: 18px;
     resize: none;
-    font-family: inherit;
+    font-family: Arial, sans-serif;
     font-size: 15px;
     color: #1e293b;
     outline: none;
@@ -1161,7 +1162,7 @@ td {
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     padding: 16px;
-    font-family: 'Segoe UI', Tahoma, sans-serif;
+    font-family: Arial, sans-serif;
 }
 
 .badge-it {
