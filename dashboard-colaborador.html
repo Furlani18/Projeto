@@ -297,51 +297,58 @@
         </div>
     </div>
 
-    <!-- MODAL: EMPRESA -->
     <div id="modalEmpresa" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-building"></i> Cadastro de Empresa</h3>
-                <button class="close-btn" onclick="fecharModalEmpresa()">&times;</button>
-            </div>
-            <form id="formEmpresa" onsubmit="salvarEmpresa(event)">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Nome da Empresa</label>
-                        <input type="text" id="empresaNome" required>
-                    </div>
-                    <div class="form-group">
-                        <label>CNPJ</label>
-                        <input type="text" id="empresaCnpj" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Cidade</label>
-                        <input type="text" id="empresaCidade" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Endereço</label>
-                        <input type="text" id="empresaEndereco" required>
-                    </div>
-                    <div class="form-group">
-                        <label>CEP</label>
-                        <input type="text" id="empresaCep" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Tipo de Empresa</label>
-                        <select id="empresaTipo" required>
-                            <option value="">-- Selecione --</option>
-                            <option value="E">Colaborador</option>
-                            <option value="C">Cliente</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="fecharModalEmpresa()">Cancelar</button>
-                    <button type="submit" class="btn-primary">Salvar Empresa</button>
-                </div>
-            </form>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-building"></i> Cadastro de Empresa</h3>
+            <button class="close-btn" onclick="fecharModalEmpresa()">&times;</button>
+        </div>
+        <form id="formEmpresa" onsubmit="salvarEmpresa(event)">
+            <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+    <div class="form-group">
+        <label>Nome da Empresa</label>
+        <input type="text" id="empresaNome" required>
+    </div>
+
+    <div class="form-group">
+        <label>CNPJ</label>
+        <input type="text" id="empresaCnpj" required>
+    </div>
+
+    <!-- Linha Dupla: CEP e Cidade -->
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px;">
+        <div class="form-group">
+            <label>CEP</label>
+            <input type="text" id="empresaCep" onblur="buscarCep(this.value)" required>
+        </div>
+        <div class="form-group">
+            <label>Cidade</label>
+            <input type="text" id="empresaCidade" readonly>
         </div>
     </div>
+
+    <!-- Linha Dupla: Endereço e Tipo -->
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px;">
+        <div class="form-group">
+            <label>Endereço</label>
+            <input type="text" id="empresaEndereco" required>
+        </div>
+        <div class="form-group">
+            <label>Tipo</label>
+            <select id="empresaTipo" required>
+                <option value="E">Colab.</option>
+                <option value="C">Cliente</option>
+            </select>
+        </div>
+    </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="fecharModalEmpresa()">Cancelar</button>
+                <button type="submit" class="btn-primary">Salvar Empresa</button>
+            </div>
+        </form>
+    </div>
+</div>
 
     <!-- MODAL: TIPO DE CHAMADO -->
     <div id="modalTipo" class="modal">
