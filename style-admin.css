@@ -954,8 +954,8 @@ tr.is-canceled {
 
 .modal-content {
     background: var(--surface);
-    width: 95%;
-    max-width: 440px;
+    width: 100%;
+    max-width: 500px;
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-modal);
     overflow: hidden;
@@ -1005,7 +1005,10 @@ tr.is-canceled {
     border-top: 1px solid var(--border);
 }
 
-.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group { 
+    display: flex; flex-direction: column; gap: 6px; 
+    margin-bottom: 12px; /* Reduzi um pouco o espaçamento */
+}
 
 .form-group label {
     font-size: 0.72rem;
