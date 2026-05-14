@@ -801,6 +801,69 @@ function prepararAnexoAdmin(input) {
     };
     reader.readAsDataURL(file);
 }
+let mapCadastro;
+let markerCadastro;
+let geocoder;
+
+/**
+ * Inicializa o mapa (Chame no carregamento da página ou ao abrir o modal)
+ */
+function initMapCadastro() {
+    geocoder = new google.maps.Geocoder();
+    const defaultPos = { lat: -23.5505, lng: -46.6333 }; // São Paulo como padrão
+    
+    mapCadastro = new google.maps.Map(document.getElementById("mapCadastro"), {
+        center: defaultPos,
+        zoom: 13,
+        disableDefaultUI: true
+    });
+
+    markerCadastro = new google.maps.Marker({
+        map: mapCadastro,
+        position: defaultPos
+    });
+}
+
+/**
+ * Busca o endereço via ViaCEP e atualiza o mapa
+ */
+async function buscarCep(cep) {
+    const valorCep = cep.replace(/\D/g, '');
+
+    if (valorCep.length !== 8) return;
+
+    try {
+        const response = await fetch(`https://viacep.com.br/ws/${valorCep}/json/`);
+        const data = await response.json();
+
+        if (data.erro) {
+            showNotification("CEP não encontrado.", "warning");
+            return;
+        }
+
+        // 1. Preenche os campos automaticamente
+        document.getElementById('empresaCidade').value = data.localidade + " / " + data.uf;
+        document.getElementById('empresaEndereco').value = data.logradouro;
+        document.getElementById('empresaEndereco').focus(); // Foca para o usuário colocar o número
+
+        // 2. Localiza no Google Maps
+        const enderecoFull = `${data.logradouro}, ${data.localidade}, ${data.uf}, Brasil`;
+        localizarNoMapa(enderecoFull);
+
+    } catch (error) {
+        console.error("Erro na busca de CEP:", error);
+    }
+}
+
+function localizarNoMapa(endereco) {
+    geocoder.geocode({ address: endereco }, (results, status) => {
+        if (status === 'OK') {
+            mapCadastro.setCenter(results[0].geometry.location);
+            markerCadastro.setPosition(results[0].geometry.location);
+            mapCadastro.setZoom(17);
+        }
+    });
+}
 
 /**
  * ENCERRAR SESSÃO E SAIR
