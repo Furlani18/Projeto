@@ -180,21 +180,38 @@ async function irParaInteracao(id, btn, forcarAbertura = false) {
     if (existingRow) existingRow.remove();
     ticketAbertoId = id;
 
-    try {
+   try {
         const response = await fetch(`http://localhost:3000/api/mensagens/${id}`);
         const mensagens = await response.json();
 
+        // ORDENADO CORRETAMENTE: Primeiro captura a linha, depois lê as células
         const rowAtual = btn.closest('tr');
+        const tipoAtual = rowAtual.cells[1].innerText;   
         const assunto = rowAtual.cells[2].innerText;
-        const status = rowAtual.cells[4].innerText;
+        const statusAtual = rowAtual.cells[4].innerText; 
 
         const template = document.getElementById('templateInteracao');
         const clone = template.content.cloneNode(true);
 
+        // Injeta os dados dinamicamente no cabeçalho do detalhe do template
+        const elBadgeStatus = clone.querySelector('#badgeStatusDinamico');
+        if (elBadgeStatus) {
+            elBadgeStatus.innerText = statusAtual;
+            elBadgeStatus.className = `badge ${statusAtual.toLowerCase().replace(/\s+/g, '-')}`;
+        }
+
+        const elMainTitle = clone.querySelector('#ticketMainTitle');
+        if (elMainTitle) {
+            elMainTitle.innerText = tipoAtual; 
+        }
+
         clone.querySelector('#ticketIdDisplay').innerText = id;
         clone.querySelector('#descDoc').innerText = assunto;
         clone.querySelector('#solicitanteDoc').innerText = usuarioAtivo.email;
-        if(clone.querySelector('.status-title-side')) clone.querySelector('.status-title-side').innerText = status;
+        
+        if(clone.querySelector('.status-title-side')) {
+            clone.querySelector('.status-title-side').innerText = statusAtual;
+        }
 
         // Lógica de Anexos na Tabela
         const listaAnexos = clone.querySelector('#listaAnexosDetalhada');
@@ -233,9 +250,16 @@ async function irParaInteracao(id, btn, forcarAbertura = false) {
                 </div>
             </div>`;
 
-        clone.querySelector('.content-scroll-area').insertAdjacentHTML('beforeend', chatHTML);
+       clone.querySelector('.content-scroll-area').insertAdjacentHTML('beforeend', chatHTML);
+        
+        // 1. Configura o clique do botão diretamente DESTRUTURANDO o clone antes dele ir para a tela
+        const btnEnviar = clone.querySelector('.btn-reply-send');
+        if (btnEnviar) {
+            btnEnviar.onclick = () => enviarRespostaCliente(id);
+        }
+
+        // 2. Insere o bloco completo na tabela
         rowAtual.after(clone);
-        document.querySelector('.btn-reply-send').onclick = () => enviarRespostaCliente(id);
 
     } catch (error) {
         showNotification("Não foi possível carregar o histórico do ticket. Tente novamente.", 'error');
@@ -292,14 +316,14 @@ function renderizarLista(ticketsParaExibir) {
     if(!tabela) return;
 
     tabela.innerHTML = ticketsParaExibir.map(ticket => {
-        // Normalização simplificada para gerar a classe do badge
+        // Normalização simplificada para gerar a classe do badge de tipo (Erro, Melhoria, Dúvida)
         const tipoClass = ticket.tipo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         const badgeClass = tipoClass.replace(/[^a-z0-9]/g, '');
         
-        // Determina a classe do status
-        const statusClass = ticket.status === 'Pendente' ? 'pendente' : 'finalizado';
+        // CORREÇÃO: Transforma o status real (ex: "Em Atendimento") em uma classe limpa (ex: "em-atendimento")
+        // Isso garante que se o banco mandar 'Pendente', a classe será 'pendente'
+        const statusClass = ticket.status.toLowerCase().replace(/\s+/g, '-');
 
-        // O RETORNO PRECISA SER UMA STRING ÚNICA ATÉ O FINAL DA TR
         return `
         <tr class="ticket-row">
             <td><strong>#${ticket.id}</strong></td>
@@ -317,7 +341,7 @@ function renderizarLista(ticketsParaExibir) {
             </td>
         </tr>
         `; 
-    }).join(''); // O join vem aqui, APÓS fechar o map
+    }).join(''); 
 }
 
 async function excluirTicket(ticketId) {
