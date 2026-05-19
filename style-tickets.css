@@ -409,16 +409,39 @@ td {
     border-color: rgba(14, 165, 233, 0.2);
 }
 
-#tabelaChamados .badge.pendente {
-    background: rgba(245, 158, 11, 0.12);
-    color: #b45309;
-    border: 1px solid rgba(245, 158, 11, 0.2);
+.badge.em-atendimento {
+    background-color: blue;
+    color: white;
+    border: 1px solid #fde68a;
 }
 
-#tabelaChamados .badge.finalizado {
-    background: rgba(16, 185, 129, 0.14);
-    color: #166534;
-    border: 1px solid rgba(16, 185, 129, 0.2);
+.badge.pendente {
+    background-color: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+}
+
+.badge.vencido {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.badge.cancelado {
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+}
+
+.badge.outro {
+    background-color: #f1f5f9;
+    color: #64748b;
+}
+
+.badge.finalizado {
+    background-color: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
 }
 
 #tabelaChamados .btn-edit,
