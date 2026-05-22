@@ -312,14 +312,14 @@
 
     <div class="form-group">
         <label>CNPJ</label>
-        <input type="text" id="empresaCnpj" required>
+        <input type="text" id="empresaCnpj" placeholder="00.000.000/0000-00" maxlength="18" required>
     </div>
 
     <!-- Linha Dupla: CEP e Cidade -->
     <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px;">
         <div class="form-group">
             <label>CEP</label>
-            <input type="text" id="empresaCep" onblur="buscarCep(this.value)" required>
+            <input type="text" id="empresaCep" placeholder="00000-000" maxlength="9" onblur="buscarCep(this.value)" required>
         </div>
         <div class="form-group">
             <label>Cidade</label>
