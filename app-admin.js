@@ -884,5 +884,54 @@ async function inicializarDashboard() {
     navegarMenu('dashboardView');
 }
 
+// Captura o campo de CNPJ do seu HTML e aplica a máscara em tempo real
+const inputCnpj = document.getElementById('empresaCnpj');
+
+if (inputCnpj) {
+    inputCnpj.addEventListener('input', function (e) {
+        let value = e.target.value;
+
+        // 1. Remove tudo o que não for número
+        value = value.replace(/\D/g, '');
+
+        // 2. Limita o tamanho máximo para 14 dígitos de CNPJ
+        if (value.length > 14) {
+            value = value.slice(0, 14);
+        }
+
+        // 3. Aplica a paginação do CNPJ: 00.000.000/0000-00
+        value = value.replace(/^(\d{2})(\d)/, '$1.$2');
+        value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+        value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
+        value = value.replace(/(\d{4})(\d)/, '$1-$2');
+
+        // 4. Devolve o valor formatado para o input
+        e.target.value = value;
+    });
+}
+
+// Captura o campo de CEP do seu HTML e aplica a máscara em tempo real
+const inputCep = document.getElementById('empresaCep');
+
+if (inputCep) {
+    inputCep.addEventListener('input', function (e) {
+        let value = e.target.value;
+
+        // 1. Remove tudo o que não for número
+        value = value.replace(/\D/g, '');
+
+        // 2. Limita o tamanho máximo para 8 dígitos
+        if (value.length > 8) {
+            value = value.slice(0, 8);
+        }
+
+        // 3. Aplica a formatação: 00000-000
+        value = value.replace(/^(\d{5})(\d)/, '$1-$2');
+
+        // 4. Devolve o valor formatado para o input
+        e.target.value = value;
+    });
+}
+
 // Inicia o processo
 inicializarDashboard();
