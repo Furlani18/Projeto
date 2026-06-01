@@ -205,12 +205,18 @@ async function irParaInteracao(id, btn, forcarAbertura = false) {
             elMainTitle.innerText = tipoAtual; 
         }
 
-        clone.querySelector('#ticketIdDisplay').innerText = id;
-        clone.querySelector('#descDoc').innerText = assunto;
-        clone.querySelector('#solicitanteDoc').innerText = usuarioAtivo.email;
+        const ticketIdEl = clone.querySelector('#ticketIdDisplay');
+        if (ticketIdEl) ticketIdEl.innerText = id;
+
+        const descDocEl = clone.querySelector('#descDoc');
+        if (descDocEl) descDocEl.innerText = assunto;
+
+        const solicitanteEl = clone.querySelector('#solicitanteDoc');
+        if (solicitanteEl) solicitanteEl.innerText = usuarioAtivo.email;
         
-        if(clone.querySelector('.status-title-side')) {
-            clone.querySelector('.status-title-side').innerText = statusAtual;
+        const statusTitleSideEl = clone.querySelector('.status-title-side');
+        if (statusTitleSideEl) {
+            statusTitleSideEl.innerText = statusAtual;
         }
 
         // Lógica de Anexos na Tabela
@@ -230,7 +236,8 @@ async function irParaInteracao(id, btn, forcarAbertura = false) {
                         </tr>`;
                 }
             });
-            if (clone.querySelector('#countAnexos')) clone.querySelector('#countAnexos').innerText = totalAnexos;
+            const countAnexosEl = clone.querySelector('#countAnexos');
+            if (countAnexosEl) countAnexosEl.innerText = totalAnexos;
         }
 
         // Chat HTML
