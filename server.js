@@ -72,6 +72,7 @@ app.get('/api/tickets', (req, res) => {
             t.DES_PRIORIDADE as prioridade, 
             t.DAT_ABERTURA as data,
             t.NRO_TIPO as nro_tipo,
+            tt.DES_TIPO as tipo,
             tt.QTD_DIAS as prazo_dias -- <--- Pegando o prazo da tabela tipo_ticket
         FROM ticket t
         LEFT JOIN colaborador c ON t.DES_LOGIN = c.DES_LOGIN
