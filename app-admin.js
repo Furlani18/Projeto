@@ -143,7 +143,7 @@ async function carregarEstatisticas() {
 
             prioridade: t.prioridade === 'A' ? 'Alta' : (t.prioridade === 'M' ? 'Média' : 'Baixa'),
             data: t.data,
-            tipo: t.nro_tipo === 1 ? 'Erro' : (t.nro_tipo === 2 ? 'Melhoria' : 'Dúvida'),
+            tipo: t.tipo || (t.nro_tipo === 1 ? 'Erro' : (t.nro_tipo === 2 ? 'Melhoria' : 'Dúvida')),
             prazo_dias: t.prazo_dias || 0 
         }));
 
@@ -177,12 +177,15 @@ function renderizarTabelaGeral(tickets) {
         }
 
         const statusClass = ticket.status.toLowerCase().replace(/\s+/g, '-');
-        const tipoClass = ticket.tipo === 'Erro' ? 'type-erro' : 
-                         ticket.tipo === 'Melhoria' ? 'type-melhoria' : 'type-duvida';
+        const tipoClass = ticket.tipo ? `type-${ticket.tipo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '')}` : 'type-outro';
 
         // LÓGICA DOS BOTÕES DE AÇÃO (Agora dentro do loop correta)
         const botoesAcao = (ticket.status === 'Finalizado' || ticket.status === 'Cancelado')
-            ? `<span style="color: #94a3b8; font-size: 11px; font-weight: 600;">SEM AÇÕES</span>`
+            ? `
+                <button class="btn-action-icon" onclick="abrirRespostaAdmin(${ticket.id})" title="Ver Histórico">
+                    <i class="fas fa-eye"></i>
+                </button>
+            `
             : isAdmin ? `
                 <button class="btn-action-icon" onclick="abrirRespostaAdmin(${ticket.id})" title="Visualizar histórico de atendimento">
                     <i class="fas fa-eye"></i>
@@ -267,27 +270,60 @@ function renderizarGraficosPorEmpresa(tickets) {
         let data = [];
         let colors = [];
 
+        const statusColorMap = {
+            'Pendente': '#f59e0b',
+            'Em Atendimento': '#2563eb',
+            'Finalizado': '#10b981',
+            'Cancelado': '#ef4444'
+        };
+
         if (modoVisao === 'tipo') {
-            const erro = ticketsDaEmpresa.filter(t => t.tipo === 'Erro').length;
-            const melhoria = ticketsDaEmpresa.filter(t => t.tipo === 'Melhoria').length;
-            const duvida = ticketsDaEmpresa.filter(t => t.tipo === 'Dúvida').length;
-            
-            labels = [`Erro (${erro})`, `Melhoria (${melhoria})`, `Dúvida (${duvida})`].filter((l, i) => [erro, melhoria, duvida][i] > 0);
-            data = [erro, melhoria, duvida].filter(v => v > 0);
-            colors = ['#ef4444', '#2563eb', '#f97316'];
+            const tipoContagem = ticketsDaEmpresa.reduce((acc, item) => {
+                const tipo = item.tipo || 'Outro';
+                acc[tipo] = (acc[tipo] || 0) + 1;
+                return acc;
+            }, {});
+
+            const tipoColorMap = {
+                'Erro': '#ef4444',
+                'Melhoria': '#2563eb',
+                'Dúvida': '#f97316'
+            };
+            const fallbackColors = ['#6366f1', '#14b8a6', '#fb7185', '#f59e0b', '#8b5cf6'];
+
+            labels = Object.entries(tipoContagem).map(([tipo, count]) => `${tipo} (${count})`);
+            data = Object.values(tipoContagem);
+            colors = Object.keys(tipoContagem).map((tipo, index) => tipoColorMap[tipo] || fallbackColors[index % fallbackColors.length]);
+
+            const topTipo = Object.entries(tipoContagem).reduce((prev, current) => current[1] > prev[1] ? current : prev, [Object.keys(tipoContagem)[0], 0])[0];
+            accentColor = tipoColorMap[topTipo] || fallbackColors[0];
         } else {
             const pendente = ticketsDaEmpresa.filter(t => t.status === 'Pendente').length;
             const atendimento = ticketsDaEmpresa.filter(t => t.status === 'Em Atendimento').length;
             const finalizado = ticketsDaEmpresa.filter(t => t.status === 'Finalizado').length;
             const cancelado = ticketsDaEmpresa.filter(t => t.status === 'Cancelado').length;
 
-            labels = [`Pendente (${pendente})`, `Atendimento (${atendimento})`, `Finalizado (${finalizado})`, `Cancelado (${cancelado})`].filter((l, i) => [pendente, atendimento, finalizado, cancelado][i] > 0);
-            data = [pendente, atendimento, finalizado, cancelado].filter(v => v > 0);
-            colors = ['#2563eb', '#facc15', '#10b981', '#94a3b8'];
+            const statuses = ['Pendente', 'Em Atendimento', 'Finalizado', 'Cancelado'];
+            const counts = [pendente, atendimento, finalizado, cancelado];
+
+            labels = statuses.map((s, i) => `${s} (${counts[i]})`).filter((l, i) => counts[i] > 0);
+            data = counts.filter(v => v > 0);
+            colors = statuses.filter((s, i) => counts[i] > 0).map(s => statusColorMap[s]);
+
+            // accent based on predominant status
+            const maxIndex = counts.indexOf(Math.max(...counts));
+            var accentColor = statusColorMap[statuses[maxIndex]] || '#2563eb';
         }
 
         // 5. Inicializar o gráfico para esta empresa
         const ctx = document.getElementById(canvasId).getContext('2d');
+        // Aplica cor de destaque no card do gráfico (borda lateral e título)
+        const cardEl = document.getElementById(canvasId).closest('.chart-card-modern');
+        if (cardEl) {
+            cardEl.style.borderLeft = `6px solid ${accentColor}`;
+            const header = cardEl.querySelector('.chart-header');
+            if (header) header.style.color = accentColor;
+        }
         instanciasGraficosEmpresas[canvasId] = new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -726,9 +762,16 @@ async function enviarRespostaAdmin() {
     }
 
     const campoTexto = document.getElementById('textoRespostaAdmin');
-    const idTicket = document.getElementById('idTicketResponder').innerText;
-    
-    if (!campoTexto.value.trim() && !anexoAdminTemp) {
+    const idTicketEl = document.getElementById('idTicketResponder');
+    const idTicket = idTicketEl?.innerText?.trim() || ticketSelecionadoId;
+
+    if (!idTicket) {
+        showNotification('Erro interno: não foi possível identificar o ticket. Reabra a resposta e tente novamente.', 'error');
+        return;
+    }
+
+    const textoResposta = campoTexto?.value ? campoTexto.value.trim() : '';
+    if (!textoResposta && !anexoAdminTemp) {
         showNotification("Por favor, escreva uma mensagem antes de enviar.", 'warning');
         return;
     }
@@ -736,7 +779,7 @@ async function enviarRespostaAdmin() {
     const payload = {
         ticket_id: idTicket,
         autor: usuarioAtivo.email,
-        texto: campoTexto.value,
+        texto: textoResposta,
         anexo_conteudo: anexoAdminTemp ? anexoAdminTemp.conteudo : null
     };
 
