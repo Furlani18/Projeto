@@ -927,16 +927,20 @@ td {
     backdrop-filter: blur(10px);
     align-items: center; 
     justify-content: center;
+    padding: 20px;
 }
 
 /* Cartão do Modal */
 .modal-content {
     background: var(--card-gradient);
-    width: 90%;
-    max-width: 500px; 
+    width: 100%;
+    max-width: 480px; 
+    max-height: calc(100vh - 40px);
     border-radius: 12px;
     box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
     animation: zoomIn 0.25s ease-out;
     transition: transform 0.3s ease;
 }
@@ -957,7 +961,15 @@ td {
 .modal-title-group { display: flex; align-items: center; gap: 12px; color: #1a5c37; }
 .modal-title-group h3 { margin: 0; font-size: 1.1rem; font-weight: 700; }
 
-.modal-body { padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+.modal-body { 
+    padding: 24px; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 18px; 
+    overflow-y: auto; 
+    flex: 1;
+    max-height: calc(100vh - 200px);
+}
 
 .modal-footer {
     padding: 16px 24px;
@@ -966,6 +978,7 @@ td {
     justify-content: flex-end;
     gap: 12px;
     border-top: 1px solid #f1f5f9;
+    flex-shrink: 0;
 }
 
 /* Estilo dos Inputs e Labels */
@@ -1062,12 +1075,14 @@ td {
     align-self: flex-end;
     background: linear-gradient(180deg, #eaf8ef 0%, #d8f0de 100%);
     border: 1px solid rgba(26, 92, 55, 0.20);
+    max-width: 75%;
 }
 
 .chat-flow .interaction-card.msg-other {
     align-self: flex-start;
     background: linear-gradient(180deg, #eff6ff 0%, #d9e9ff 100%);
     border: 1px solid rgba(37, 99, 235, 0.22);
+    max-width: 75%;
 }
 
 .chat-flow .interaction-card:hover {
