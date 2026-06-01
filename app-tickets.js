@@ -55,6 +55,19 @@ function mostrarToastPendente() {
 
 mostrarToastPendente();
 
+function formatBase64Size(base64Data) {
+    if (!base64Data) return '---';
+
+    const rawBase64 = base64Data.split(',').pop().replace(/\s/g, '');
+    const padding = rawBase64.endsWith('==') ? 2 : (rawBase64.endsWith('=') ? 1 : 0);
+    const bytes = Math.max(0, Math.round((rawBase64.length * 3) / 4 - padding));
+
+    if (bytes < 1024) return `${bytes} B`;
+    const kb = bytes / 1024;
+    if (kb < 1024) return `${kb.toFixed(1)} KB`;
+    return `${(kb / 1024).toFixed(1)} MB`;
+}
+
 // Lógica para Criar Novo Ticket
 document.getElementById('formTicket').onsubmit = function(e) {
     e.preventDefault();
@@ -230,7 +243,7 @@ async function irParaInteracao(id, btn, forcarAbertura = false) {
                     listaAnexos.innerHTML += `
                         <tr style="border-bottom: 1px solid #f1f5f9;">
                             <td style="padding: 10px;"><a href="${msg.anexo}" download="anexo" style="color:#2563eb; font-weight:600;">Ver Anexo</a></td>
-                            <td style="padding: 10px;">---</td>
+                            <td style="padding: 10px;">${formatBase64Size(msg.anexo)}</td>
                             <td style="padding: 10px;">${new Date(msg.data).toLocaleDateString('pt-BR')}</td>
                             <td style="padding: 10px;">${msg.autor_display}</td>
                         </tr>`;
@@ -299,15 +312,13 @@ async function carregarTickets() {
         const meusChamados = chamadosDoBanco.map(ticket => ({
             id: ticket.id,
             assunto: ticket.assunto,
-            tipo: ticket.nro_tipo === 1 ? 'Erro' : (ticket.nro_tipo === 2 ? 'Melhoria' : 'Dúvida'),
+            tipo: ticket.tipo || (ticket.nro_tipo === 1 ? 'Erro' : (ticket.nro_tipo === 2 ? 'Melhoria' : 'Dúvida')),
             prioridade: ticket.prioridade === 'A' ? 'Alta' : (ticket.prioridade === 'M' ? 'Média' : 'Baixa'),
-
-status: ticket.status === 'P' ? 'Pendente' : 
-       (ticket.status === 'E' ? 'Em Atendimento' : 
-       (ticket.status === 'V' ? 'Vencido' : 
-       (ticket.status === 'F' ? 'Finalizado' : 
-       (ticket.status === 'C' ? 'Cancelado' : 'Outro')))),
-            
+            status: ticket.status === 'P' ? 'Pendente' : 
+                   (ticket.status === 'E' ? 'Em Atendimento' : 
+                   (ticket.status === 'V' ? 'Vencido' : 
+                   (ticket.status === 'F' ? 'Finalizado' : 
+                   (ticket.status === 'C' ? 'Cancelado' : 'Outro')))),
             dataCriacao: ticket.data,
             usuario: ticket.email_usuario
         }));
@@ -315,6 +326,31 @@ status: ticket.status === 'P' ? 'Pendente' :
         renderizarLista(meusChamados);
     } catch (error) {
         console.error("Erro na conexão:", error);
+    }
+}
+
+async function carregarTiposTicketCliente() {
+    const selectTipo = document.getElementById('tipo');
+    if (!selectTipo) return;
+
+    selectTipo.innerHTML = '<option value="" disabled selected>Carregando tipos de chamado...</option>';
+
+    try {
+        const response = await fetch('http://localhost:3000/api/tipos-ticket');
+        const tipos = await response.json();
+
+        if (!Array.isArray(tipos) || tipos.length === 0) {
+            selectTipo.innerHTML = '<option value="" disabled>Não há tipos cadastrados</option>';
+            return;
+        }
+
+        selectTipo.innerHTML = tipos
+            .sort((a, b) => a.id - b.id)
+            .map(tipo => `<option value="${tipo.id}">${tipo.nome}</option>`)
+            .join('');
+    } catch (error) {
+        console.error('Erro ao carregar tipos de chamado:', error);
+        selectTipo.innerHTML = '<option value="" disabled>Erro ao carregar tipos</option>';
     }
 }
 
@@ -464,4 +500,5 @@ function inicializarPreviewAnexoTicket() {
 }
 
 carregarTickets();
+carregarTiposTicketCliente();
 inicializarPreviewAnexoTicket();
