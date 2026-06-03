@@ -65,9 +65,9 @@
                         </div>
                     </div>
                     <div class="detail-actions">
-                        <button class="btn-action primary-action" onclick="ativarResposta()">Responder</button>
-                        <div class="action-divider"></div>
-                        <button class="btn-action close-action" onclick="fecharInline(this)">Fechar</button>
+                        <button class="btn-action close-action" onclick="fecharInline(this)">
+                            <i class="fas fa-times"></i> Fechar ticket
+                        </button>
                     </div>
                 </header>
 
@@ -128,7 +128,7 @@
             </select>
         </div>
         <!-- Se estiver no template de interação, o ID vem do texto que já está na tela -->
-        <button onclick="salvarEdicaoInline(document.getElementById('ticketIdDisplay').innerText)" class="btn-save">
+        <button class="btn-save">
             Atualizar
         </button>
     </div>
