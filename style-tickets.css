@@ -529,6 +529,17 @@ td {
     min-height: 42px;
 }
 .btn-action:hover { background: #eef4ff; border-color: #9ca3af; color: #1e3a8a; }
+.btn-action.close-action {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+    box-shadow: 0 10px 20px rgba(59, 130, 246, 0.12);
+}
+.btn-action.close-action:hover {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #1e40af;
+}
 .primary-action {
     background: #1e40af;
     color: white;
