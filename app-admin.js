@@ -182,12 +182,12 @@ function renderizarTabelaGeral(tickets) {
         // LÓGICA DOS BOTÕES DE AÇÃO (Agora dentro do loop correta)
         const botoesAcao = (ticket.status === 'Finalizado' || ticket.status === 'Cancelado')
             ? `
-                <button class="btn-action-icon" onclick="abrirRespostaAdmin(${ticket.id})" title="Ver Histórico">
+                <button class="btn-action-icon" onclick="abrirRespostaAdmin(${ticket.id}, 'historico')" title="Ver Histórico">
                     <i class="fas fa-eye"></i>
                 </button>
             `
             : isAdmin ? `
-                <button class="btn-action-icon" onclick="abrirRespostaAdmin(${ticket.id})" title="Visualizar histórico de atendimento">
+                <button class="btn-action-icon" onclick="abrirRespostaAdmin(${ticket.id}, 'historico')" title="Visualizar histórico de atendimento">
                     <i class="fas fa-eye"></i>
                 </button>
                 <button class="btn-action-icon btn-finish" onclick="finalizarTicket(${ticket.id})" title="Finalizar Chamado">
@@ -197,8 +197,14 @@ function renderizarTabelaGeral(tickets) {
                     <i class="fas fa-times-circle"></i>
                 </button>
             ` : `
-                <button class="btn-action-icon" onclick="abrirRespostaAdmin(${ticket.id})" title="Atender Chamado">
+                <button class="btn-action-icon" onclick="abrirRespostaAdmin(${ticket.id}, 'historico')" title="Visualizar histórico de mensagens">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn-action-icon" onclick="abrirRespostaAdmin(${ticket.id}, 'atender')" title="Atender Chamado">
                     <i class="fas fa-headset"></i>
+                </button>
+                <button class="btn-action-icon btn-finish" onclick="finalizarTicket(${ticket.id})" title="Finalizar Chamado">
+                    <i class="fas fa-check-circle"></i>
                 </button>
             `;
 
@@ -753,10 +759,14 @@ async function deletarUsuario(email) {
     }
 }
 
-async function abrirRespostaAdmin(id) {
+async function abrirRespostaAdmin(id, modo = 'historico') {
     ticketSelecionadoId = id;
     try {
         const response = await fetch(`http://localhost:3000/api/mensagens/${id}`);
+        if (!response.ok) {
+            showNotification('Não foi possível carregar o histórico do ticket.', 'error');
+            return;
+        }
         const mensagens = await response.json();
         const chatContainer = document.getElementById('historicoChatAdmin');
         if (!chatContainer) return;
@@ -768,7 +778,10 @@ async function abrirRespostaAdmin(id) {
                 ${msg.anexo && msg.anexo.length > 50 ? `<div class="attachment-link"><a href="${msg.anexo}" download="anexo-${msg.id}">📎 Baixar Anexo</a></div>` : ''}
             </div>`).join('');
 
-        document.getElementById('idTicketResponder').innerText = id;
+        const ticketResponderEl = document.getElementById('idTicketResponder');
+        if (ticketResponderEl) {
+            ticketResponderEl.innerText = id;
+        }
 
         const textoRespostaAdmin = document.getElementById('textoRespostaAdmin');
         const sendButton = document.querySelector('#areaRespostaAdmin .btn-send-modern');
@@ -777,12 +790,23 @@ async function abrirRespostaAdmin(id) {
         const ticketInfoLabel = document.querySelector('#areaRespostaAdmin .ticket-info span');
 
         if (ticketInfoLabel) {
-            ticketInfoLabel.innerHTML = isAdmin
-                ? `Histórico do Chamado <strong>#${id}</strong>`
-                : `Resposta para o Chamado <strong>#${id}</strong>`;
+            ticketInfoLabel.innerHTML = modo === 'atender'
+                ? `Resposta para o Chamado <strong>#${id}</strong>`
+                : `Histórico do Chamado <strong>#${id}</strong>`;
         }
 
-        if (isAdmin) {
+        if (modo === 'atender' && !isAdmin) {
+            await atualizarStatusTicket(id, 'E');
+
+            if (textoRespostaAdmin) {
+                textoRespostaAdmin.disabled = false;
+                textoRespostaAdmin.value = '';
+                textoRespostaAdmin.placeholder = 'Digite a solução técnica...';
+            }
+            if (sendButton) sendButton.style.display = 'inline-flex';
+            if (attachmentArea) attachmentArea.style.display = 'flex';
+            if (replyBody) replyBody.style.display = 'block';
+        } else {
             if (textoRespostaAdmin) {
                 textoRespostaAdmin.value = '';
                 textoRespostaAdmin.disabled = true;
@@ -790,21 +814,12 @@ async function abrirRespostaAdmin(id) {
             if (sendButton) sendButton.style.display = 'none';
             if (attachmentArea) attachmentArea.style.display = 'none';
             if (replyBody) replyBody.style.display = 'none';
-        } else {
-            // Colaborador abrindo ticket - atualiza status para "Em Atendimento"
-            await atualizarStatusTicket(id, 'E');
-            
-            if (textoRespostaAdmin) {
-                textoRespostaAdmin.disabled = false;
-                textoRespostaAdmin.placeholder = 'Digite a solução técnica...';
-            }
-            if (sendButton) sendButton.style.display = 'inline-flex';
-            if (attachmentArea) attachmentArea.style.display = 'flex';
-            if (replyBody) replyBody.style.display = 'block';
         }
 
-        document.getElementById('cardTabelaTickets').style.display = 'none'; 
-        document.getElementById('containerInteracaoAdmin').style.display = 'block'; 
+        const cardTabela = document.getElementById('cardTabelaTickets');
+        const containerInteracao = document.getElementById('containerInteracaoAdmin');
+        if (cardTabela) cardTabela.style.display = 'none';
+        if (containerInteracao) containerInteracao.style.display = 'block';
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) { console.error("Erro no chat:", e); }
 }
@@ -862,9 +877,11 @@ async function enviarRespostaAdmin() {
 /**
  * VOLTAR PARA A TABELA (FECHAR CHAT)
  */
-function fecharAreaResposta() { 
-    document.getElementById('containerInteracaoAdmin').style.display = 'none'; 
-    document.getElementById('cardTabelaTickets').style.display = 'block'; 
+function fecharAreaResposta() {
+    const containerInteracao = document.getElementById('containerInteracaoAdmin');
+    const cardTabela = document.getElementById('cardTabelaTickets');
+    if (containerInteracao) containerInteracao.style.display = 'none';
+    if (cardTabela) cardTabela.style.display = 'block';
     carregarEstatisticas();
 }
 
@@ -909,10 +926,16 @@ let geocoder;
  * Inicializa o mapa (Chame no carregamento da página ou ao abrir o modal)
  */
 function initMapCadastro() {
+    const mapElement = document.getElementById("mapCadastro");
+    if (!mapElement || !window.google || !google.maps) {
+        console.warn('Mapa de cadastro não inicializado: elemento ou Google Maps ausente.');
+        return;
+    }
+
     geocoder = new google.maps.Geocoder();
     const defaultPos = { lat: -23.5505, lng: -46.6333 }; // São Paulo como padrão
     
-    mapCadastro = new google.maps.Map(document.getElementById("mapCadastro"), {
+    mapCadastro = new google.maps.Map(mapElement, {
         center: defaultPos,
         zoom: 13,
         disableDefaultUI: true
@@ -934,6 +957,10 @@ async function buscarCep(cep) {
 
     try {
         const response = await fetch(`https://viacep.com.br/ws/${valorCep}/json/`);
+        if (!response.ok) {
+            showNotification("Não foi possível buscar o CEP.", "warning");
+            return;
+        }
         const data = await response.json();
 
         if (data.erro) {
@@ -941,10 +968,13 @@ async function buscarCep(cep) {
             return;
         }
 
-        // 1. Preenche os campos automaticamente
-        document.getElementById('empresaCidade').value = data.localidade + " / " + data.uf;
-        document.getElementById('empresaEndereco').value = data.logradouro;
-        document.getElementById('empresaEndereco').focus(); // Foca para o usuário colocar o número
+        const empresaCidadeEl = document.getElementById('empresaCidade');
+        const empresaEnderecoEl = document.getElementById('empresaEndereco');
+        if (empresaCidadeEl) empresaCidadeEl.value = data.localidade + " / " + data.uf;
+        if (empresaEnderecoEl) {
+            empresaEnderecoEl.value = data.logradouro;
+            empresaEnderecoEl.focus();
+        }
 
         // 2. Localiza no Google Maps
         const enderecoFull = `${data.logradouro}, ${data.localidade}, ${data.uf}, Brasil`;
@@ -956,8 +986,13 @@ async function buscarCep(cep) {
 }
 
 function localizarNoMapa(endereco) {
+    if (!geocoder || !mapCadastro || !markerCadastro) {
+        console.warn('Google Maps não está pronto para localização.');
+        return;
+    }
+
     geocoder.geocode({ address: endereco }, (results, status) => {
-        if (status === 'OK') {
+        if (status === 'OK' && results && results[0]) {
             mapCadastro.setCenter(results[0].geometry.location);
             markerCadastro.setPosition(results[0].geometry.location);
             mapCadastro.setZoom(17);
