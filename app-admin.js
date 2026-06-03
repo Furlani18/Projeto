@@ -429,6 +429,14 @@ async function carregarUsuarios() {
 function abrirModalUsuario() {
     const modal = document.getElementById('modalUsuario');
     if (modal) {
+        // Limpa o formulário para evitar dados residuais e autofill indesejado
+        const form = document.getElementById('formUsuario');
+        if (form) {
+            form.reset();
+            document.getElementById('userName').value = '';
+            document.getElementById('userEmail').value = '';
+            document.getElementById('userPass').value = '';
+        }
         modal.style.display = 'flex';
         // Carrega as empresas no select
         carregarEmpresasNoSelect();
