@@ -268,7 +268,7 @@
                     </div>
                     <div class="form-group">
                         <label>E-mail</label>
-                        <input type="email" id="userEmail" required>
+                        <input type="email" id="userEmail" required placeholder="usuario@empresa.com" autocomplete="email" inputmode="email" pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" title="Digite um e-mail válido" oninput="this.value=this.value.toLowerCase().replace(/\s/g, '')">
                     </div>
                     <div class="form-group">
                         <label>Senha Inicial</label>
