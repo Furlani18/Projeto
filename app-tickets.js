@@ -272,13 +272,19 @@ async function irParaInteracao(id, btn, forcarAbertura = false) {
 
        clone.querySelector('.content-scroll-area').insertAdjacentHTML('beforeend', chatHTML);
         
-        // 1. Configura o clique do botão diretamente DESTRUTURANDO o clone antes dele ir para a tela
+        // 1. Configura o clique do botão de resposta dentro do clone
         const btnEnviar = clone.querySelector('.btn-reply-send');
         if (btnEnviar) {
             btnEnviar.onclick = () => enviarRespostaCliente(id);
         }
 
-        // 2. Insere o bloco completo na tabela
+        // 2. Configura o clique do botão de salvar edição dentro do clone
+        const btnSalvar = clone.querySelector('.btn-save');
+        if (btnSalvar) {
+            btnSalvar.onclick = () => salvarEdicaoInline(id);
+        }
+
+        // 3. Insere o bloco completo na tabela
         rowAtual.after(clone);
 
     } catch (error) {
