@@ -264,15 +264,15 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label>Nome Completo</label>
-                        <input type="text" id="userName" required>
+                        <input type="text" id="userName" autocomplete="name" required>
                     </div>
                     <div class="form-group">
                         <label>E-mail</label>
-                        <input type="email" id="userEmail" required placeholder="usuario@empresa.com" autocomplete="email" inputmode="email" pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" title="Digite um e-mail válido" oninput="this.value=this.value.toLowerCase().replace(/\s/g, '')">
+                        <input type="email" id="userEmail" required placeholder="usuario@empresa.com" autocomplete="username" inputmode="email" pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" title="Digite um e-mail válido" oninput="this.value=this.value.toLowerCase().replace(/\s/g, '')">
                     </div>
                     <div class="form-group">
                         <label>Senha Inicial</label>
-                        <input type="password" id="userPass" required>
+                        <input type="password" id="userPass" autocomplete="new-password" required>
                     </div>
                     <div class="form-group">
                         <label>Perfil</label>
