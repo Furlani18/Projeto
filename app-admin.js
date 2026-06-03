@@ -190,15 +190,15 @@ function renderizarTabelaGeral(tickets) {
                 <button class="btn-action-icon" onclick="abrirRespostaAdmin(${ticket.id})" title="Visualizar histórico de atendimento">
                     <i class="fas fa-eye"></i>
                 </button>
+                <button class="btn-action-icon btn-finish" onclick="finalizarTicket(${ticket.id})" title="Finalizar Chamado">
+                    <i class="fas fa-check-circle"></i>
+                </button>
                 <button class="btn-action-icon btn-cancel" onclick="cancelarTicket(${ticket.id})" title="Cancelar Chamado">
                     <i class="fas fa-times-circle"></i>
                 </button>
             ` : `
                 <button class="btn-action-icon" onclick="abrirRespostaAdmin(${ticket.id})" title="Atender Chamado">
-                    <i class="fas fa-external-link-alt"></i>
-                </button>
-                <button class="btn-action-icon btn-cancel" onclick="cancelarTicket(${ticket.id})" title="Cancelar Chamado">
-                    <i class="fas fa-times-circle"></i>
+                    <i class="fas fa-headset"></i>
                 </button>
             `;
 
@@ -343,6 +343,25 @@ function renderizarGraficosPorEmpresa(tickets) {
 /**
  * AÇÕES E FILTROS
  */
+/**
+ * ATUALIZAR STATUS DO TICKET (sem confirmação, usada internamente)
+ */
+async function atualizarStatusTicket(id, novoStatus) {
+    try {
+        const response = await fetch(`http://localhost:3000/api/tickets/${id}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ novoStatus: novoStatus })
+        });
+
+        if (response.ok) {
+            console.log(`Ticket #${id} atualizado para status ${novoStatus}`);
+        }
+    } catch (error) {
+        console.error("Erro ao atualizar status do ticket:", error);
+    }
+}
+
 async function cancelarTicket(id) {
     if (!confirm(`Deseja realmente cancelar o chamado #${id}?`)) return;
 
@@ -354,8 +373,26 @@ async function cancelarTicket(id) {
         });
 
         if (response.ok) carregarEstatisticas();
+        else showNotification('Não foi possível cancelar o chamado.', 'error');
     } catch (error) {
         showNotification("Não foi possível cancelar o chamado. Por favor, tente novamente mais tarde.", 'error');
+    }
+}
+
+async function finalizarTicket(id) {
+    if (!confirm(`Deseja realmente finalizar o chamado #${id}?`)) return;
+
+    try {
+        const response = await fetch(`http://localhost:3000/api/tickets/${id}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ novoStatus: 'F' })
+        });
+
+        if (response.ok) carregarEstatisticas();
+        else showNotification('Não foi possível finalizar o chamado.', 'error');
+    } catch (error) {
+        showNotification("Não foi possível finalizar o chamado. Por favor, tente novamente mais tarde.", 'error');
     }
 }
 
@@ -461,13 +498,18 @@ function filtrarEmpresasPorPerfil() {
 async function salvarUsuario(event) {
     event.preventDefault();
     const nome = document.getElementById('userName').value.trim();
-    const email = document.getElementById('userEmail').value.trim();
+    const email = document.getElementById('userEmail').value.trim().toLowerCase();
     const senha = document.getElementById('userPass').value.trim();
     const perfil = document.getElementById('userPerfil').value;
     const nro_empresa = document.getElementById('userEmpresa').value;
 
     if (!nome || !email || !senha || !nro_empresa) {
         showNotification('Por favor, preencha todos os campos para cadastrar o usuário.', 'warning');
+        return;
+    }
+
+    if (!isValidEmail(email)) {
+        showNotification('Por favor, informe um e-mail válido.', 'warning');
         return;
     }
 
@@ -489,6 +531,10 @@ async function salvarUsuario(event) {
     } catch (error) {
         showNotification(error.message || 'Não foi possível cadastrar o usuário. Verifique os dados e tente novamente.', 'error');
     }
+}
+
+function isValidEmail(email) {
+    return /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(email);
 }
 
 function abrirModalEmpresa() {
@@ -737,6 +783,9 @@ async function abrirRespostaAdmin(id) {
             if (attachmentArea) attachmentArea.style.display = 'none';
             if (replyBody) replyBody.style.display = 'none';
         } else {
+            // Colaborador abrindo ticket - atualiza status para "Em Atendimento"
+            await atualizarStatusTicket(id, 'E');
+            
             if (textoRespostaAdmin) {
                 textoRespostaAdmin.disabled = false;
                 textoRespostaAdmin.placeholder = 'Digite a solução técnica...';
