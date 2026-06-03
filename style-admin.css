@@ -898,22 +898,34 @@ tr.is-canceled {
 .btn-back-modern {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
     background: var(--surface-2);
     color: var(--text-2);
     border: 1px solid var(--border);
-    padding: 9px 16px;
-    border-radius: var(--radius-sm);
-    font-size: 0.85rem;
-    font-weight: 600;
+    padding: 10px 18px;
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: background var(--transition), color var(--transition), transform var(--transition);
+    transition: background var(--transition), color var(--transition), transform var(--transition), box-shadow var(--transition);
 }
 
 .btn-back-modern:hover {
     background: var(--border);
     color: var(--text-1);
     transform: translateX(-2px);
+}
+
+.btn-close-chat {
+    background: var(--blue);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.18);
+}
+
+.btn-close-chat:hover {
+    background: #1d4ed8;
+    transform: translateX(-1px);
 }
 
 .btn-back-modern i { transition: transform var(--transition); }
