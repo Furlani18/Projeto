@@ -303,7 +303,31 @@ app.delete('/api/tipos-ticket/:id', (req, res) => {
     });
 });
 
-// ATUALIZAR STATUS DO TICKET (Cancelar ou Finalizar)
+// Atualizar status simples do ticket (Cancelar, Finalizar, mudar status rápido)
+app.put('/api/tickets/:id/status', (req, res) => {
+    const { id } = req.params;
+    const { novoStatus } = req.body;
+    const statusAceito = ['P', 'E', 'V', 'F', 'C'];
+
+    if (!novoStatus || !statusAceito.includes(novoStatus)) {
+        return res.status(400).json({ error: 'Status inválido. Use P, E, V, F ou C.' });
+    }
+
+    const sql = `UPDATE ticket SET DES_STATUS = ? WHERE NRO_TICKET = ?`;
+    db.query(sql, [novoStatus, id], (err, result) => {
+        if (err) {
+            console.error("Erro ao atualizar status do ticket:", err.message);
+            return res.status(500).json({ error: err.message });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: "Ticket não encontrado." });
+        }
+
+        res.json({ message: "Status do ticket atualizado com sucesso!" });
+    });
+});
+
 // ATUALIZAÇÃO COMPLETA DO TICKET (Assunto, Prioridade e Status)
 app.put('/api/tickets/:id', (req, res) => {
     const { id } = req.params;
