@@ -97,7 +97,7 @@ app.get('/api/tickets', (req, res) => {
 });
 
 app.post('/api/tickets', (req, res) => {
-    const { assunto, prioridade, login, tipo_id, anexo } = req.body;
+    const { assunto, descricao, prioridade, login, tipo_id, anexo } = req.body;
     if (!assunto || !login || !tipo_id) {
         return res.status(400).json({ error: 'Assunto, login e tipo de chamado são obrigatórios.' });
     }
@@ -110,17 +110,35 @@ app.post('/api/tickets', (req, res) => {
         }
 
         const ticketId = ticketResult.insertId;
-        if (!anexo) {
+        const tarefas = [];
+
+        if (descricao && descricao.trim()) {
+            tarefas.push(cb => {
+                const sql = `INSERT INTO atende (DAT_ATENDE, DES_ATENDE, FLG_ESTADO, DOC_ANEXO, NRO_TICKET, DES_LOGIN) VALUES (NOW(), ?, 'D', NULL, ?, ?)`;
+                db.query(sql, [descricao.trim(), ticketId, login], cb);
+            });
+        }
+
+        if (anexo) {
+            tarefas.push(cb => {
+                const sql = `INSERT INTO atende (DAT_ATENDE, DES_ATENDE, FLG_ESTADO, DOC_ANEXO, NRO_TICKET, DES_LOGIN) VALUES (NOW(), ?, 'A', ?, ?, ?)`;
+                db.query(sql, ['Anexo enviado no primeiro contato', anexo, ticketId, login], cb);
+            });
+        }
+
+        if (tarefas.length === 0) {
             return res.json({ message: 'Chamado aberto com sucesso!', id: ticketId });
         }
 
-        const sqlInsertAtende = `INSERT INTO atende (DAT_ATENDE, DES_ATENDE, FLG_ESTADO, DOC_ANEXO, NRO_TICKET, DES_LOGIN) VALUES (NOW(), ?, 'A', ?, ?, ?)`;
-        db.query(sqlInsertAtende, ['Anexo enviado no primeiro contato', anexo, ticketId, login], (atendeErr) => {
-            if (atendeErr) {
-                console.error('Erro ao salvar anexo inicial:', atendeErr.message);
-                return res.status(500).json({ error: atendeErr.message });
-            }
-            res.json({ message: 'Chamado aberto com sucesso!', id: ticketId });
+        let concluidas = 0;
+        tarefas.forEach(tarefa => {
+            tarefa((err) => {
+                if (err) console.error('Erro ao salvar atende:', err.message);
+                concluidas++;
+                if (concluidas === tarefas.length) {
+                    res.json({ message: 'Chamado aberto com sucesso!', id: ticketId });
+                }
+            });
         });
     });
 });
@@ -156,30 +174,35 @@ app.get('/api/mensagens/:ticketId', (req, res) => {
     const { ticketId } = req.params;
     
     const sql = `
-        SELECT 
-            a.DES_LOGIN as email_autor, 
-            c.DES_NOME as nome_autor, 
-            a.DAT_ATENDE as data, 
-            a.DES_ATENDE as texto, 
-            a.DOC_ANEXO as anexo, 
-            a.NRO_ATENDE as id 
+        SELECT
+            a.DES_LOGIN as email_autor,
+            c.DES_NOME as nome_autor,
+            c.FLG_TIP_COL as tipo_autor,
+            a.DAT_ATENDE as data,
+            a.DES_ATENDE as texto,
+            a.DOC_ANEXO as anexo,
+            a.NRO_ATENDE as id,
+            a.FLG_ESTADO as tipo_msg
         FROM atende a
         LEFT JOIN colaborador c ON a.DES_LOGIN = c.DES_LOGIN
-        WHERE a.NRO_TICKET = ? 
+        WHERE a.NRO_TICKET = ?
         ORDER BY a.NRO_ATENDE ASC`;
 
     db.query(sql, [ticketId], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
-        
+
+        const tipoLabel = { 'A': 'Admin', 'E': 'Colaborador', 'C': 'Cliente' };
         const mensagensFormatadas = results.map(row => ({
             id: row.id,
             data: row.data,
             texto: row.texto,
             email_autor: row.email_autor,
             autor_display: row.nome_autor || row.email_autor,
-            anexo: row.anexo ? row.anexo.toString('utf-8') : null
+            tipo_autor: tipoLabel[row.tipo_autor] || 'Cliente',
+            anexo: row.anexo ? row.anexo.toString('utf-8') : null,
+            tipo_msg: row.tipo_msg
         }));
-        
+
         res.json(mensagensFormatadas);
     });
 });
