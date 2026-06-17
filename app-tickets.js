@@ -558,6 +558,30 @@ function inicializarPreviewAnexoTicket() {
     });
 }
 
+function inicializarColaPrintCliente() {
+    const textarea = document.getElementById('reply-text');
+    if (!textarea) return;
+    textarea.addEventListener('paste', function(e) {
+        const items = (e.clipboardData || window.clipboardData)?.items;
+        if (!items) return;
+        for (const item of items) {
+            if (item.type.startsWith('image/')) {
+                e.preventDefault();
+                const file = item.getAsFile();
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    anexoTemporario = { nome: 'screenshot.png', conteudo: ev.target.result };
+                    const preview = document.getElementById('file-preview-name');
+                    if (preview) preview.innerText = '📎 Screenshot colado';
+                };
+                reader.readAsDataURL(file);
+                break;
+            }
+        }
+    });
+}
+
 carregarTickets();
 carregarTiposTicketCliente();
 inicializarPreviewAnexoTicket();
+inicializarColaPrintCliente();
