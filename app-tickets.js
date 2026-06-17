@@ -24,7 +24,7 @@ if (elData) elData.innerText = new Date().toLocaleDateString('pt-BR', {
 });
 
 let ticketAbertoId = null;
-let anexoTemporario = null;
+let anexosTemporarios = [];
 let anexoTemporarioTicket = null;
 let meusChamadosGlobal = [];
 
@@ -152,15 +152,38 @@ async function finalizarCriacao(ticket) {
 /**
  * Chat e Interação
  */
+function atualizarPreviewCliente() {
+    const preview = document.getElementById('file-preview-name');
+    if (!preview) return;
+    if (anexosTemporarios.length === 0) { preview.innerHTML = ''; return; }
+    preview.innerHTML = anexosTemporarios.map((a, i) => {
+        const isImg = a.conteudo && a.conteudo.startsWith('data:image/');
+        const inner = isImg
+            ? `<img src="${a.conteudo}" class="preview-thumb" alt="${a.nome}">`
+            : `📎 ${a.nome}`;
+        return `<span class="preview-pill">${inner}<button type="button" onclick="removerAnexoCliente(${i})" class="preview-pill-remove">✕</button></span>`;
+    }).join('');
+}
+
+function removerAnexoCliente(idx) {
+    anexosTemporarios.splice(idx, 1);
+    atualizarPreviewCliente();
+    const input = document.getElementById('file-input');
+    if (input) input.value = '';
+}
+
 function prepararAnexo(input) {
     const file = input.files[0];
     if (!file) return;
-
+    if (anexosTemporarios.length >= 2) {
+        showNotification('Limite de 2 anexos por mensagem.', 'warning');
+        input.value = '';
+        return;
+    }
     const reader = new FileReader();
     reader.onload = function(e) {
-        anexoTemporario = { nome: file.name, conteudo: e.target.result };
-        const preview = document.getElementById('file-preview-name');
-        if (preview) preview.innerText = "📎 " + file.name;
+        anexosTemporarios.push({ nome: file.name, conteudo: e.target.result, inline: false });
+        atualizarPreviewCliente();
     };
     reader.readAsDataURL(file);
 }
@@ -169,13 +192,13 @@ async function enviarRespostaCliente(ticketId) {
     const campoTexto = document.getElementById('reply-text');
     const texto = campoTexto ? campoTexto.value : "";
 
-    if (!texto.trim() && !anexoTemporario) return;
+    if (!texto.trim() && anexosTemporarios.length === 0) return;
 
     const payload = {
         ticket_id: ticketId,
         autor: usuarioAtivo.email,
         texto: texto,
-        anexo_conteudo: anexoTemporario ? anexoTemporario.conteudo : null
+        anexos: anexosTemporarios.map(a => ({ inline: a.inline, data: a.conteudo }))
     };
 
     try {
@@ -187,8 +210,8 @@ async function enviarRespostaCliente(ticketId) {
 
         if (response.ok) {
             if (campoTexto) campoTexto.value = "";
-            anexoTemporario = null;
-            if (document.getElementById('file-preview-name')) document.getElementById('file-preview-name').innerText = "";
+            anexosTemporarios = [];
+            atualizarPreviewCliente();
             
             const btnRef = document.querySelector(`button[onclick*="irParaInteracao(${ticketId},"]`);
             if (btnRef) irParaInteracao(ticketId, btnRef, true);
@@ -257,18 +280,19 @@ async function irParaInteracao(id, btn, forcarAbertura = false) {
         const listaAnexos = clone.querySelector('#listaAnexosDetalhada');
         let totalAnexos = 0;
         if (listaAnexos) {
-            listaAnexos.innerHTML = ''; 
+            listaAnexos.innerHTML = '';
             mensagens.forEach(msg => {
-                if (msg.anexo && msg.anexo.length > 50) {
+                (msg.anexos || []).filter(a => !a.inline).forEach((a, i) => {
+                    const src = a.data || a;
                     totalAnexos++;
                     listaAnexos.innerHTML += `
                         <tr style="border-bottom: 1px solid #f1f5f9;">
-                            <td style="padding: 10px;"><a href="${msg.anexo}" download="anexo" style="color:#2563eb; font-weight:600;">Ver Anexo</a></td>
-                            <td style="padding: 10px;">${formatBase64Size(msg.anexo)}</td>
+                            <td style="padding: 10px;"><a href="${src}" download="anexo-${totalAnexos}" style="color:#2563eb; font-weight:600;">Ver Anexo ${(msg.anexos || []).filter(x => !x.inline).length > 1 ? i + 1 : ''}</a></td>
+                            <td style="padding: 10px;">${formatBase64Size(src)}</td>
                             <td style="padding: 10px;">${new Date(msg.data).toLocaleDateString('pt-BR')}</td>
                             <td style="padding: 10px;">${msg.autor_display}</td>
                         </tr>`;
-                }
+                });
             });
             const countAnexosEl = clone.querySelector('#countAnexos');
             if (countAnexosEl) countAnexosEl.innerText = totalAnexos;
@@ -297,18 +321,20 @@ async function irParaInteracao(id, btn, forcarAbertura = false) {
                 return `
                     ${dateSep}
                     <div class="msg-row ${isMe ? 'msg-row-me' : 'msg-row-other'}">
-                        <div class="msg-avatar-bubble">${inicial}</div>
-                        <div class="msg-content">
-                            <div class="msg-meta">
-                                <span class="msg-author">${msg.autor_display}</span>
-                                <span class="msg-time">${hora}</span>
-                            </div>
+                        <div class="msg-header">
+                            <div class="msg-avatar-bubble">${inicial}</div>
+                            <span class="msg-author">${msg.autor_display}</span>
+                            <span class="msg-time">${hora}</span>
+                        </div>
+                        <div class="msg-body">
                             <div class="msg-bubble">
                                 ${msg.texto ? `<p class="msg-text">${msg.texto}</p>` : ''}
-                                ${msg.anexo && msg.anexo.length > 50 ? `
-                                    <a class="msg-attachment-pill" href="${msg.anexo}" download>
-                                        <i class="fas fa-paperclip"></i> Baixar Anexo
-                                    </a>` : ''}
+                                ${(msg.anexos || []).map((a, i) => {
+                                    const src = a.data || a;
+                                    return a.inline
+                                        ? `<img src="${src}" class="msg-img-inline" onclick="abrirImagem(this.src)" title="Clique para ampliar">`
+                                        : `<a class="msg-attachment-pill" href="${src}" download="anexo-${msg.id}-${i+1}"><i class="fas fa-paperclip"></i> Baixar Anexo</a>`;
+                                }).join('')}
                             </div>
                         </div>
                     </div>`;
@@ -567,18 +593,40 @@ function inicializarColaPrintCliente() {
         for (const item of items) {
             if (item.type.startsWith('image/')) {
                 e.preventDefault();
+                if (anexosTemporarios.length >= 2) {
+                    showNotification('Limite de 2 anexos por mensagem.', 'warning');
+                    break;
+                }
                 const file = item.getAsFile();
                 const reader = new FileReader();
                 reader.onload = function(ev) {
-                    anexoTemporario = { nome: 'screenshot.png', conteudo: ev.target.result };
-                    const preview = document.getElementById('file-preview-name');
-                    if (preview) preview.innerText = '📎 Screenshot colado';
+                    const nome = `screenshot-${anexosTemporarios.length + 1}.png`;
+                    anexosTemporarios.push({ nome, conteudo: ev.target.result, inline: true });
+                    atualizarPreviewCliente();
                 };
                 reader.readAsDataURL(file);
                 break;
             }
         }
     });
+}
+
+function abrirImagem(src) {
+    let lb = document.getElementById('gesistec-lightbox');
+    if (!lb) {
+        lb = document.createElement('div');
+        lb.id = 'gesistec-lightbox';
+        lb.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;cursor:zoom-out;align-items:center;justify-content:center;';
+        lb.onclick = () => { lb.style.display = 'none'; };
+        const img = document.createElement('img');
+        img.id = 'gesistec-lightbox-img';
+        img.style.cssText = 'max-width:90vw;max-height:90vh;border-radius:10px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,0.5);';
+        img.onclick = e => e.stopPropagation();
+        lb.appendChild(img);
+        document.body.appendChild(lb);
+    }
+    document.getElementById('gesistec-lightbox-img').src = src;
+    lb.style.display = 'flex';
 }
 
 carregarTickets();
