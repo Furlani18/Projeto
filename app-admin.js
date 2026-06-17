@@ -30,7 +30,7 @@ document.querySelectorAll('.admin-only').forEach(el => {
 
 // 3. Variáveis Globais de Controle
 let chartPrioridade, chartStatus;
-let anexoAdminTemp = null; 
+let anexosAdminTemp = [];
 let listaTicketsGlobal = [];
 let ticketsParaTabela = [];
 let ticketSelecionadoId = null;
@@ -1087,20 +1087,22 @@ async function abrirRespostaAdmin(id, modo = 'historico') {
 
                 return `
                     ${dateSep}
-                    <div class="msg-row ${isMe ? 'msg-row-me' : 'msg-row-other'} msg-role-${roleClass}">
-                        <div class="msg-avatar-bubble msg-avatar-${roleClass}">${inicial}</div>
-                        <div class="msg-content">
-                            <div class="msg-meta">
-                                <span class="msg-author">${msg.autor_display}</span>
-                                <span class="msg-role-badge ${roleClass}">${tipoRole}</span>
-                                <span class="msg-time">${hora}</span>
-                            </div>
+                    <div class="msg-row msg-role-${roleClass}${isMe ? ' msg-is-me' : ''}">
+                        <div class="msg-header">
+                            <div class="msg-avatar-bubble msg-avatar-${roleClass}">${inicial}</div>
+                            <span class="msg-author">${msg.autor_display}</span>
+                            <span class="msg-role-badge ${roleClass}">${tipoRole}</span>
+                            <span class="msg-time">${hora}</span>
+                        </div>
+                        <div class="msg-body">
                             <div class="msg-bubble msg-bubble-${roleClass}">
                                 ${msg.texto ? `<p class="msg-text">${msg.texto}</p>` : ''}
-                                ${msg.anexo && msg.anexo.length > 50 ? `
-                                    <a class="msg-attachment-pill" href="${msg.anexo}" download="anexo-${msg.id}">
-                                        <i class="fas fa-paperclip"></i> Baixar Anexo
-                                    </a>` : ''}
+                                ${(msg.anexos || []).map((a, i) => {
+                                    const src = a.data || a;
+                                    return a.inline
+                                        ? `<img src="${src}" class="msg-img-inline" onclick="abrirImagem(this.src)" title="Clique para ampliar">`
+                                        : `<a class="msg-attachment-pill" href="${src}" download="anexo-${msg.id}-${i+1}"><i class="fas fa-paperclip"></i> Baixar Anexo</a>`;
+                                }).join('')}
                             </div>
                         </div>
                     </div>`;
@@ -1173,7 +1175,7 @@ async function enviarRespostaAdmin() {
     }
 
     const textoResposta = campoTexto?.value ? campoTexto.value.trim() : '';
-    if (!textoResposta && !anexoAdminTemp) {
+    if (!textoResposta && anexosAdminTemp.length === 0) {
         showNotification("Por favor, escreva uma mensagem antes de enviar.", 'warning');
         return;
     }
@@ -1182,7 +1184,7 @@ async function enviarRespostaAdmin() {
         ticket_id: idTicket,
         autor: usuarioAtivo.email,
         texto: textoResposta,
-        anexo_conteudo: anexoAdminTemp ? anexoAdminTemp.conteudo : null
+        anexos: anexosAdminTemp.map(a => ({ inline: a.inline, data: a.conteudo }))
     };
 
     try {
@@ -1194,9 +1196,8 @@ async function enviarRespostaAdmin() {
 
         if (response.ok) {
             campoTexto.value = "";
-            anexoAdminTemp = null;
-            const preview = document.getElementById('preview-anexo-admin');
-            if (preview) preview.innerText = '';
+            anexosAdminTemp = [];
+            atualizarPreviewAdmin();
             fecharAreaResposta();
         }
     } catch (error) {
@@ -1232,22 +1233,58 @@ function atualizarElementosInterface(dados) {
 /**
  * CONVERTER ARQUIVO PARA BASE64 (PARA O PREVIEW E ENVIO)
  */
+function atualizarPreviewAdmin() {
+    const preview = document.getElementById('preview-anexo-admin');
+    if (!preview) return;
+    if (anexosAdminTemp.length === 0) { preview.innerHTML = ''; return; }
+    preview.innerHTML = anexosAdminTemp.map((a, i) => {
+        const isImg = a.conteudo && a.conteudo.startsWith('data:image/');
+        const inner = isImg
+            ? `<img src="${a.conteudo}" class="preview-thumb" alt="${a.nome}">`
+            : `📎 ${a.nome}`;
+        return `<span class="preview-pill">${inner}<button type="button" onclick="removerAnexoAdmin(${i})" class="preview-pill-remove">✕</button></span>`;
+    }).join('');
+}
+
+function removerAnexoAdmin(idx) {
+    anexosAdminTemp.splice(idx, 1);
+    atualizarPreviewAdmin();
+    const input = document.getElementById('anexoAdminInput');
+    if (input) input.value = '';
+}
+
 function prepararAnexoAdmin(input) {
     const file = input.files[0];
     if (!file) return;
-
+    if (anexosAdminTemp.length >= 2) {
+        showNotification('Limite de 2 anexos por mensagem.', 'warning');
+        input.value = '';
+        return;
+    }
     const reader = new FileReader();
     reader.onload = function(e) {
-        // Armazena na variável global que você já declarou no topo do arquivo
-        anexoAdminTemp = { 
-            nome: file.name, 
-            conteudo: e.target.result 
-        };
-        
-        const preview = document.getElementById('preview-anexo-admin');
-        if (preview) preview.innerText = "📎 " + file.name;
+        anexosAdminTemp.push({ nome: file.name, conteudo: e.target.result, inline: false });
+        atualizarPreviewAdmin();
     };
     reader.readAsDataURL(file);
+}
+
+function abrirImagem(src) {
+    let lb = document.getElementById('gesistec-lightbox');
+    if (!lb) {
+        lb = document.createElement('div');
+        lb.id = 'gesistec-lightbox';
+        lb.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;cursor:zoom-out;align-items:center;justify-content:center;';
+        lb.onclick = () => { lb.style.display = 'none'; };
+        const img = document.createElement('img');
+        img.id = 'gesistec-lightbox-img';
+        img.style.cssText = 'max-width:90vw;max-height:90vh;border-radius:10px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,0.5);';
+        img.onclick = e => e.stopPropagation();
+        lb.appendChild(img);
+        document.body.appendChild(lb);
+    }
+    document.getElementById('gesistec-lightbox-img').src = src;
+    lb.style.display = 'flex';
 }
 let mapCadastro;
 let markerCadastro;
@@ -1408,12 +1445,16 @@ function inicializarColaPrintAdmin() {
         for (const item of items) {
             if (item.type.startsWith('image/')) {
                 e.preventDefault();
+                if (anexosAdminTemp.length >= 2) {
+                    showNotification('Limite de 2 anexos por mensagem.', 'warning');
+                    break;
+                }
                 const file = item.getAsFile();
                 const reader = new FileReader();
                 reader.onload = function(ev) {
-                    anexoAdminTemp = { nome: 'screenshot.png', conteudo: ev.target.result };
-                    const preview = document.getElementById('preview-anexo-admin');
-                    if (preview) preview.innerText = '📎 Screenshot colado';
+                    const nome = `screenshot-${anexosAdminTemp.length + 1}.png`;
+                    anexosAdminTemp.push({ nome, conteudo: ev.target.result, inline: true });
+                    atualizarPreviewAdmin();
                     showNotification('Imagem colada como anexo!', 'info');
                 };
                 reader.readAsDataURL(file);
