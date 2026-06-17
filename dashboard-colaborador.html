@@ -14,7 +14,9 @@
         <!-- SIDEBAR -->
         <nav class="sidebar">
             <div class="sidebar-header">
-                <h3>GESISTEC</h3>
+                <div class="sidebar-logo-box">
+                    <img src="assets/logo-gesistec.png" alt="Gesistec" class="logo-img">
+                </div>
                 <p id="nomeAdmin">Carregando...</p>
             </div>
             <div class="sidebar-menu">
@@ -35,9 +37,9 @@
                     <li class="menu-item admin-only" id="menu-usuarios" onclick="navegarMenu('usersView')">
                         <i class="fas fa-users"></i> Usuários
                     </li>
-                    <li class="menu-item" id="menu-relatorios" onclick="navegarMenu('reportsView')">
+                    <!--<li class="menu-item" id="menu-relatorios" onclick="navegarMenu('reportsView')">
                         <i class="fas fa-chart-line"></i> Relatórios
-                    </li>
+                    </li>-->
                 </ul>
             </div>
             <button onclick="logout()" class="btn-logout-card">
@@ -61,6 +63,9 @@
                         </div>
                     </div>
                 </header>
+
+                <!-- Resumo geral (KPIs) -->
+                <div id="kpiSummaryRow" class="kpi-summary-row"></div>
 
                 <!-- Filtro de Modo de Visão -->
                 <div class="filter-bar-modern" style="background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
@@ -118,8 +123,40 @@
                     </div>
                 </div>
 
+                <div class="atendimento-toolbar">
+                    <div class="search-box-modern">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="buscaAtendimento" placeholder="Buscar por cliente, assunto ou nº do chamado..." oninput="aplicarFiltroAtendimento()">
+                    </div>
+                    <div class="toolbar-filters">
+                        <select id="filtroStatusAtendimento" onchange="aplicarFiltroAtendimento()">
+                            <option value="todos">Todos os status</option>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Vencido">Vencido</option>
+                            <option value="Em Atendimento">Em Atendimento</option>
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="Cancelado">Cancelado</option>
+                        </select>
+                        <select id="filtroTipoAtendimento" onchange="aplicarFiltroAtendimento()">
+                            <option value="todos">Todos os tipos</option>
+                            <option value="Erro">Erro</option>
+                            <option value="Melhoria">Melhoria</option>
+                            <option value="Dúvida">Dúvida</option>
+                        </select>
+                        <select id="filtroPrioridadeAtendimento" onchange="aplicarFiltroAtendimento()">
+                            <option value="todos">Todas as prioridades</option>
+                            <option value="Alta">Alta</option>
+                            <option value="Média">Média</option>
+                            <option value="Baixa">Baixa</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="card table-card" id="cardTabelaTickets">
-                    <div class="table-header"><h3>Fila de Chamados Recentes</h3></div>
+                    <div class="table-header">
+                        <h3>Fila de Chamados Recentes</h3>
+                        <span class="table-count-badge" id="contadorAtendimento">0 chamados</span>
+                    </div>
                     <div class="table-responsive">
                         <table class="ticket-table">
                             <thead>
@@ -153,7 +190,27 @@
                         </button>
                     </div>
                 </header>
+
+                <div class="atendimento-toolbar">
+                    <div class="search-box-modern">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="buscaUsuario" placeholder="Buscar por nome, e-mail ou empresa..." oninput="aplicarFiltroUsuarios()">
+                    </div>
+                    <div class="toolbar-filters">
+                        <select id="filtroPerfilUsuario" onchange="aplicarFiltroUsuarios()">
+                            <option value="todos">Todos os perfis</option>
+                            <option value="admin">Admin</option>
+                            <option value="colaborador">Colaborador</option>
+                            <option value="cliente">Cliente</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="card table-card">
+                    <div class="table-header">
+                        <h3>Usuários Cadastrados</h3>
+                        <span class="table-count-badge" id="contadorUsuarios">0 usuários</span>
+                    </div>
                     <div class="table-responsive">
                         <table class="ticket-table">
                             <thead>
@@ -185,7 +242,26 @@
                         </button>
                     </div>
                 </header>
+
+                <div class="atendimento-toolbar">
+                    <div class="search-box-modern">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="buscaEmpresa" placeholder="Buscar por nome, CNPJ ou cidade..." oninput="aplicarFiltroEmpresas()">
+                    </div>
+                    <div class="toolbar-filters">
+                        <select id="filtroTipoEmpresa" onchange="aplicarFiltroEmpresas()">
+                            <option value="todos">Todos os tipos</option>
+                            <option value="C">Cliente</option>
+                            <option value="E">Colaborador</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="card table-card">
+                    <div class="table-header">
+                        <h3>Empresas Cadastradas</h3>
+                        <span class="table-count-badge" id="contadorEmpresas">0 empresas</span>
+                    </div>
                     <div class="table-responsive">
                         <table class="ticket-table">
                             <thead>
@@ -193,9 +269,7 @@
                                     <th>ID</th>
                                     <th>Empresa</th>
                                     <th>CNPJ</th>
-                                    <th>Cidade</th>
-                                    <th>Endereço</th>
-                                    <th>CEP</th>
+                                    <th>Localização</th>
                                     <th>Tipo</th>
                                     <th>Ações</th>
                                 </tr>
@@ -220,13 +294,17 @@
                     </div>
                 </header>
                 <div class="card table-card">
+                    <div class="table-header">
+                        <h3>Tipos Cadastrados</h3>
+                        <span class="table-count-badge" id="contadorTipos">0 tipos</span>
+                    </div>
                     <div class="table-responsive">
                         <table class="ticket-table">
                             <thead>
                                 <tr>
                                     <th>ID</th>
                                     <th>Tipo</th>
-                                    <th>Prazo (dias)</th>
+                                    <th>Prazo de Atendimento</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
@@ -237,7 +315,7 @@
             </div>
 
             <!-- VIEW: RELATÓRIOS -->
-            <div id="reportsView" class="view-section" style="display: none;">
+            <!--<div id="reportsView" class="view-section" style="display: none;">
                 <header class="content-header">
                     <h2>Relatórios e BI</h2>
                     <p>Performance e volumetria do sistema.</p>
@@ -251,7 +329,7 @@
                 </div>
             </div>
         </main>
-    </div>
+    </div>-->
 
     <!-- MODAL: USUÁRIO -->
     <div id="modalUsuario" class="modal">
