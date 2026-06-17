@@ -318,35 +318,6 @@ function aplicarFiltroAtendimento() {
 }
 
 /**
- * RESUMO GERAL (KPIs)
- */
-function renderizarKpis(tickets) {
-    const container = document.getElementById('kpiSummaryRow');
-    if (!container) return;
-
-    const contar = (status) => tickets.filter(t => t.status === status).length;
-
-    const kpis = [
-        { key: 'total',       icon: 'fa-ticket-alt',     label: 'Total de Chamados', value: tickets.length },
-        { key: 'pendente',    icon: 'fa-hourglass-half', label: 'Pendentes',         value: contar('Pendente') },
-        { key: 'atendimento', icon: 'fa-headset',        label: 'Em Atendimento',    value: contar('Em Atendimento') },
-        { key: 'vencido',     icon: 'fa-exclamation-triangle', label: 'Vencidos',    value: contar('Vencido') },
-        { key: 'finalizado',  icon: 'fa-check-circle',   label: 'Finalizados',       value: contar('Finalizado') },
-        { key: 'cancelado',   icon: 'fa-ban',            label: 'Cancelados',        value: contar('Cancelado') }
-    ];
-
-    container.innerHTML = kpis.map(kpi => `
-        <div class="kpi-card kpi-${kpi.key}">
-            <div class="kpi-icon"><i class="fas ${kpi.icon}"></i></div>
-            <div class="kpi-info">
-                <div class="kpi-value">${kpi.value}</div>
-                <div class="kpi-label">${kpi.label}</div>
-            </div>
-        </div>
-    `).join('');
-}
-
-/**
  * RENDERIZAÇÃO DOS GRÁFICOS (com texto central, legenda detalhada e ordenação por volume)
  */
 // Objeto global para armazenar as instâncias e podermos destruí-las ao atualizar
@@ -1250,10 +1221,7 @@ function fecharAreaResposta() {
 function atualizarElementosInterface(dados) {
     console.log("GESISTEC: Atualizando interface com", dados.length, "tickets.");
 
-    // 1. Atualiza o resumo geral (KPIs)
-    renderizarKpis(dados);
-
-    // 2. Gera os gráficos dinâmicos por empresa
+    // 1. Gera os gráficos dinâmicos por empresa
     renderizarGraficosPorEmpresa(dados);
 
     // 3. Preenche a tabela de chamados (respeitando os filtros da seção de Atendimento)
@@ -1431,5 +1399,30 @@ if (inputCep) {
     });
 }
 
+function inicializarColaPrintAdmin() {
+    const textarea = document.getElementById('textoRespostaAdmin');
+    if (!textarea) return;
+    textarea.addEventListener('paste', function(e) {
+        const items = (e.clipboardData || window.clipboardData)?.items;
+        if (!items) return;
+        for (const item of items) {
+            if (item.type.startsWith('image/')) {
+                e.preventDefault();
+                const file = item.getAsFile();
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    anexoAdminTemp = { nome: 'screenshot.png', conteudo: ev.target.result };
+                    const preview = document.getElementById('preview-anexo-admin');
+                    if (preview) preview.innerText = '📎 Screenshot colado';
+                    showNotification('Imagem colada como anexo!', 'info');
+                };
+                reader.readAsDataURL(file);
+                break;
+            }
+        }
+    });
+}
+
 // Inicia o processo
 inicializarDashboard();
+inicializarColaPrintAdmin();
