@@ -218,9 +218,9 @@ window.addEventListener("DOMContentLoaded", () => {
                         if (inputFile) inputFile.value = '';
                         const preview = document.getElementById('previewAnexo');
                         if (preview) preview.innerHTML = `
-                            <div style="padding:8px;border:1px solid #ddd;border-radius:6px;display:flex;justify-content:space-between;align-items:center;">
-                                <span>📎 Screenshot colado</span>
-                                <button onclick="removerAnexoPaste()" style="border:none;background:none;color:red;cursor:pointer;">✖</button>
+                            <div style="padding:8px;border:1px solid #ddd;border-radius:6px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                                <img src="${ev.target.result}" style="height:56px;border-radius:4px;object-fit:cover;cursor:pointer;" onclick="window.open(this.src)">
+                                <button onclick="removerAnexoPaste()" style="border:none;background:none;color:red;cursor:pointer;font-size:16px;">✖</button>
                             </div>`;
                     };
                     reader.readAsDataURL(file);
