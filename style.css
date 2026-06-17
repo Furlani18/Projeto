@@ -70,6 +70,13 @@ body {
     margin: 0;
 }
 
+.logo-horizontal .logo-img {
+    max-width: 220px;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
 .logo-horizontal span {
     font-size: 0.75rem;
     color: var(--text-muted);
