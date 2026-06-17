@@ -3,6 +3,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const ticketId = parseInt(urlParams.get('id'));
 
 let ticketAtual = null;
+let pastedImageData = null;
 
 function ensureNotificationContainer() {
     let container = document.getElementById('gesistec-toast-container');
@@ -56,7 +57,9 @@ function enviarResposta() {
 
     const texto = campo.value;
 
-    if (!texto && (!inputFile || inputFile.files.length === 0)) {
+    const temAnexoArquivo = inputFile && inputFile.files.length > 0;
+
+    if (!texto && !temAnexoArquivo && !pastedImageData) {
         showNotification("Digite uma mensagem ou anexe um arquivo para prosseguir.", 'warning');
         return;
     }
@@ -71,35 +74,34 @@ function enviarResposta() {
         anexo: null
     };
 
-    // COM ANEXO
-    if (inputFile && inputFile.files.length > 0) {
+    function finalizarEnvio() {
+        ticketAtual.mensagens.push(novaMensagem);
+        salvarNoStorage();
+        campo.value = "";
+        if (inputFile) inputFile.value = "";
+        pastedImageData = null;
+        const preview = document.getElementById('previewAnexo');
+        if (preview) preview.innerHTML = '';
+        renderizarConversas();
+    }
+
+    if (pastedImageData) {
+        novaMensagem.anexo = pastedImageData;
+        finalizarEnvio();
+    } else if (temAnexoArquivo) {
         const file = inputFile.files[0];
         const reader = new FileReader();
-
-        reader.onload = function (e) {
+        reader.onload = function(e) {
             novaMensagem.anexo = {
                 nome: file.name,
                 tamanho: (file.size / 1024).toFixed(2) + " KB",
                 conteudo: e.target.result
             };
-
-            ticketAtual.mensagens.push(novaMensagem);
-            salvarNoStorage();
-
-            campo.value = "";
-            inputFile.value = "";
-
-            renderizarConversas();
+            finalizarEnvio();
         };
-
         reader.readAsDataURL(file);
     } else {
-        // SEM ANEXO
-        ticketAtual.mensagens.push(novaMensagem);
-        salvarNoStorage();
-
-        campo.value = "";
-        renderizarConversas();
+        finalizarEnvio();
     }
 }
 
@@ -160,6 +162,12 @@ function baixarAnexo(base64, nome) {
 }
 
 
+function removerAnexoPaste() {
+    pastedImageData = null;
+    const preview = document.getElementById('previewAnexo');
+    if (preview) preview.innerHTML = '';
+}
+
 window.addEventListener("DOMContentLoaded", () => {
     const inputFile = document.getElementById("anexoResposta");
 
@@ -167,6 +175,7 @@ window.addEventListener("DOMContentLoaded", () => {
         inputFile.addEventListener("change", function () {
             const preview = document.getElementById("previewAnexo");
             preview.innerHTML = "";
+            pastedImageData = null;
 
             if (this.files.length > 0) {
                 const file = this.files[0];
@@ -186,6 +195,37 @@ window.addEventListener("DOMContentLoaded", () => {
                         </button>
                     </div>
                 `;
+            }
+        });
+    }
+
+    const textoResposta = document.getElementById('textoResposta');
+    if (textoResposta) {
+        textoResposta.addEventListener('paste', function(e) {
+            const items = (e.clipboardData || window.clipboardData)?.items;
+            if (!items) return;
+            for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    const reader = new FileReader();
+                    reader.onload = function(ev) {
+                        pastedImageData = {
+                            nome: 'screenshot.png',
+                            tamanho: (file.size / 1024).toFixed(2) + ' KB',
+                            conteudo: ev.target.result
+                        };
+                        if (inputFile) inputFile.value = '';
+                        const preview = document.getElementById('previewAnexo');
+                        if (preview) preview.innerHTML = `
+                            <div style="padding:8px;border:1px solid #ddd;border-radius:6px;display:flex;justify-content:space-between;align-items:center;">
+                                <span>📎 Screenshot colado</span>
+                                <button onclick="removerAnexoPaste()" style="border:none;background:none;color:red;cursor:pointer;">✖</button>
+                            </div>`;
+                    };
+                    reader.readAsDataURL(file);
+                    break;
+                }
             }
         });
     }
