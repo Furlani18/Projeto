@@ -5,14 +5,28 @@ if (!usuarioAtivo) {
     window.location.href = 'index.html'; 
 }
 
-// Inicialização da Saudação
-if(document.getElementById('saudacao')) {
-    document.getElementById('saudacao').innerText = `Olá, ${usuarioAtivo.nome}!`;
-}
+// Inicialização do Header
+const primeiroNome = usuarioAtivo.nome ? usuarioAtivo.nome.split(' ')[0] : '';
+const inicial = primeiroNome ? primeiroNome.charAt(0).toUpperCase() : '?';
+
+const elSaudacao = document.getElementById('saudacao');
+if (elSaudacao) elSaudacao.innerText = `Olá, ${primeiroNome}!`;
+
+const elAvatar = document.getElementById('userAvatarHdr');
+if (elAvatar) elAvatar.innerText = inicial;
+
+const elEmpresa = document.getElementById('empresaHeader');
+if (elEmpresa && usuarioAtivo.empresa) elEmpresa.innerText = usuarioAtivo.empresa;
+
+const elData = document.getElementById('dataAtualCliente');
+if (elData) elData.innerText = new Date().toLocaleDateString('pt-BR', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
+});
 
 let ticketAbertoId = null;
 let anexoTemporario = null;
 let anexoTemporarioTicket = null;
+let meusChamadosGlobal = [];
 
 function ensureNotificationContainer() {
     let container = document.getElementById('gesistec-toast-container');
@@ -107,9 +121,10 @@ async function finalizarCriacao(ticket) {
     // Montamos o pacote conforme o server.js espera
     const dadosParaEnviar = {
         assunto: ticket.assunto,
+        descricao: ticket.descricao || '',
         prioridade: ticket.prioridade,
-        login: ticket.emailCliente, 
-        tipo_id: ticket.tipo, // Corrigido de ticket,tipo para ticket.tipo
+        login: ticket.emailCliente,
+        tipo_id: ticket.tipo,
         anexo: ticket.anexos.length > 0 ? ticket.anexos[0].conteudo : null
     };
 
@@ -221,8 +236,14 @@ async function irParaInteracao(id, btn, forcarAbertura = false) {
         const ticketIdEl = clone.querySelector('#ticketIdDisplay');
         if (ticketIdEl) ticketIdEl.innerText = id;
 
+        const msgDescricao = mensagens.find(m => m.tipo_msg === 'D');
         const descDocEl = clone.querySelector('#descDoc');
-        if (descDocEl) descDocEl.innerText = assunto;
+        if (descDocEl) {
+            descDocEl.innerText = msgDescricao ? msgDescricao.texto : '';
+            descDocEl.style.display = msgDescricao ? 'block' : 'none';
+        }
+        const contentLabelEl = clone.querySelector('.content-label');
+        if (contentLabelEl) contentLabelEl.style.display = msgDescricao ? 'block' : 'none';
 
         const solicitanteEl = clone.querySelector('#solicitanteDoc');
         if (solicitanteEl) solicitanteEl.innerText = usuarioAtivo.email;
@@ -253,24 +274,48 @@ async function irParaInteracao(id, btn, forcarAbertura = false) {
             if (countAnexosEl) countAnexosEl.innerText = totalAnexos;
         }
 
-        // Chat HTML
-        const chatHTML = `
-            <div class="conversation-container">
-                <div class="chat-flow">
-                    ${mensagens.map(msg => `
-                        <div class="interaction-card ${msg.email_autor === usuarioAtivo.email ? 'msg-me' : 'msg-other'}">
-                            <div class="msg-header">
-                                <strong>${msg.autor_display}</strong>
-                                <span>${new Date(msg.data).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</span>
-                            </div>
-                            <p>${msg.texto}</p>
-                            ${msg.anexo && msg.anexo.length > 50 ? `<a href="${msg.anexo}" download>📎 Baixar Arquivo</a>` : ''}
-                        </div>
-                    `).join('')}
-                </div>
-            </div>`;
+        // Renderização do chat em bolhas (inserido no fim, mantendo posição original)
+        const mensagensChat = mensagens.filter(m => m.tipo_msg !== 'D');
+        let lastDate = null;
+        const chatBubbles = mensagensChat.length === 0
+            ? `<div class="chat-empty-state">
+                    <i class="fas fa-comments"></i>
+                    <p>Nenhuma mensagem ainda.<br>Envie a primeira resposta abaixo!</p>
+               </div>`
+            : mensagensChat.map(msg => {
+                const isMe = msg.email_autor === usuarioAtivo.email;
+                const inicial = (msg.autor_display || '?').charAt(0).toUpperCase();
+                const hora = new Date(msg.data).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+                const dataMensagem = new Date(msg.data).toLocaleDateString('pt-BR', {day: '2-digit', month: 'long', year: 'numeric'});
 
-       clone.querySelector('.content-scroll-area').insertAdjacentHTML('beforeend', chatHTML);
+                let dateSep = '';
+                if (dataMensagem !== lastDate) {
+                    lastDate = dataMensagem;
+                    dateSep = `<div class="chat-date-sep">${dataMensagem}</div>`;
+                }
+
+                return `
+                    ${dateSep}
+                    <div class="msg-row ${isMe ? 'msg-row-me' : 'msg-row-other'}">
+                        <div class="msg-avatar-bubble">${inicial}</div>
+                        <div class="msg-content">
+                            <div class="msg-meta">
+                                <span class="msg-author">${msg.autor_display}</span>
+                                <span class="msg-time">${hora}</span>
+                            </div>
+                            <div class="msg-bubble">
+                                ${msg.texto ? `<p class="msg-text">${msg.texto}</p>` : ''}
+                                ${msg.anexo && msg.anexo.length > 50 ? `
+                                    <a class="msg-attachment-pill" href="${msg.anexo}" download>
+                                        <i class="fas fa-paperclip"></i> Baixar Anexo
+                                    </a>` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+
+        const chatHTML = `<div class="chat-flow" id="chatFlowDinamico">${chatBubbles}</div>`;
+        clone.querySelector('.content-scroll-area').insertAdjacentHTML('beforeend', chatHTML);
         
         // 1. Configura o clique do botão de resposta dentro do clone
         const btnEnviar = clone.querySelector('.btn-reply-send');
@@ -286,6 +331,12 @@ async function irParaInteracao(id, btn, forcarAbertura = false) {
 
         // 3. Insere o bloco completo na tabela
         rowAtual.after(clone);
+
+        // 4. Scroll automático ao fim do chat
+        requestAnimationFrame(() => {
+            const chatFlow = document.getElementById('chatFlowDinamico');
+            if (chatFlow) chatFlow.scrollTop = chatFlow.scrollHeight;
+        });
 
     } catch (error) {
         showNotification("Não foi possível carregar o histórico do ticket. Tente novamente.", 'error');
@@ -318,17 +369,19 @@ async function carregarTickets() {
         const meusChamados = chamadosDoBanco.map(ticket => ({
             id: ticket.id,
             assunto: ticket.assunto,
+            descricao: ticket.descricao || '',
             tipo: ticket.tipo || (ticket.nro_tipo === 1 ? 'Erro' : (ticket.nro_tipo === 2 ? 'Melhoria' : 'Dúvida')),
             prioridade: ticket.prioridade === 'A' ? 'Alta' : (ticket.prioridade === 'M' ? 'Média' : 'Baixa'),
-            status: ticket.status === 'P' ? 'Pendente' : 
-                   (ticket.status === 'E' ? 'Em Atendimento' : 
-                   (ticket.status === 'V' ? 'Vencido' : 
-                   (ticket.status === 'F' ? 'Finalizado' : 
+            status: ticket.status === 'P' ? 'Pendente' :
+                   (ticket.status === 'E' ? 'Em Atendimento' :
+                   (ticket.status === 'V' ? 'Vencido' :
+                   (ticket.status === 'F' ? 'Finalizado' :
                    (ticket.status === 'C' ? 'Cancelado' : 'Outro')))),
             dataCriacao: ticket.data,
             usuario: ticket.email_usuario
         }));
 
+        meusChamadosGlobal = meusChamados;
         renderizarLista(meusChamados);
     } catch (error) {
         console.error("Erro na conexão:", error);
