@@ -31,9 +31,12 @@ document.querySelectorAll('.admin-only').forEach(el => {
 // 3. Variáveis Globais de Controle
 let chartPrioridade, chartStatus;
 let anexoAdminTemp = null; 
-let listaTicketsGlobal = []; 
+let listaTicketsGlobal = [];
+let ticketsParaTabela = [];
 let ticketSelecionadoId = null;
 let todasEmpresas = [];
+let empresasCadastradas = [];
+let usuariosCadastrados = [];
 
 function ensureNotificationContainer() {
     let container = document.getElementById('gesistec-toast-container');
@@ -113,6 +116,35 @@ function navegarMenu(viewId) {
 }
 
 /**
+ * NAVEGAR PARA ATENDIMENTO COM FILTRO DE EMPRESA + STATUS/TIPO
+ */
+function navegarParaAtendimentoFiltrado(empresa, valor, modo) {
+    document.querySelectorAll('.view-section').forEach(s => s.style.display = 'none');
+    const target = document.getElementById('ticketsSection');
+    if (target) target.style.display = 'block';
+
+    document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+    const menuAtendimento = document.getElementById('menu-atendimento');
+    if (menuAtendimento) menuAtendimento.classList.add('active');
+
+    const buscaEl = document.getElementById('buscaAtendimento');
+    const statusEl = document.getElementById('filtroStatusAtendimento');
+    const tipoEl = document.getElementById('filtroTipoAtendimento');
+    const prioEl = document.getElementById('filtroPrioridadeAtendimento');
+
+    if (buscaEl) buscaEl.value = empresa;
+    if (statusEl) statusEl.value = 'todos';
+    if (tipoEl) tipoEl.value = 'todos';
+    if (prioEl) prioEl.value = 'todos';
+
+    if (modo === 'status' && statusEl) statusEl.value = valor;
+    else if (modo === 'tipo' && tipoEl) tipoEl.value = valor;
+
+    aplicarFiltroAtendimento();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/**
  * BUSCA DE DADOS (MySQL) - Versão Corrigida
  */
 /**
@@ -159,6 +191,20 @@ async function carregarEstatisticas() {
 function renderizarTabelaGeral(tickets) {
     const tabela = document.getElementById('ticketsByClientList');
     if (!tabela) return;
+
+    if (tickets.length === 0) {
+        tabela.innerHTML = `
+            <tr class="empty-row">
+                <td colspan="8">
+                    <div class="empty-state-table">
+                        <i class="fas fa-inbox"></i>
+                        <p>Nenhum chamado encontrado com os filtros selecionados.</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
 
     const hoje = new Date();
 
@@ -216,14 +262,14 @@ function renderizarTabelaGeral(tickets) {
                     <span>${ticket.usuario}</span>
                 </td>
                 <td class="col-tipo">
-                    <span class="badge-outline ${tipoClass}">${ticket.tipo}</span>
+                    <span class="type-badge ${tipoClass}">${ticket.tipo}</span>
                 </td>
                 <td class="col-assunto">
                     <div class="subject-text">${ticket.assunto}</div>
                     ${infoAtraso}
                 </td>
                 <td class="col-data">${new Date(ticket.data).toLocaleDateString('pt-BR')}</td>
-                <td class="col-prio"><span class="prio-text prio-${ticket.prioridade.toLowerCase()}">${ticket.prioridade}</span></td>
+                <td class="col-prio"><span class="prio-text prio-${ticket.prioridade.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}">${ticket.prioridade}</span></td>
                 <td class="col-status">
                     <span class="status-pill ${statusClass}">${ticket.status}</span>
                 </td>
@@ -236,10 +282,97 @@ function renderizarTabelaGeral(tickets) {
 }
 
 /**
- * RENDERIZAÇÃO DOS GRÁFICOS (Atualizado com Cancelados)
+ * FILTROS DA SEÇÃO DE ATENDIMENTO (busca + status + tipo + prioridade)
+ */
+function aplicarFiltroAtendimento() {
+    const buscaEl = document.getElementById('buscaAtendimento');
+    const statusEl = document.getElementById('filtroStatusAtendimento');
+    const tipoEl = document.getElementById('filtroTipoAtendimento');
+    const prioEl = document.getElementById('filtroPrioridadeAtendimento');
+
+    const busca = buscaEl ? buscaEl.value.trim().toLowerCase() : '';
+    const status = statusEl ? statusEl.value : 'todos';
+    const tipo = tipoEl ? tipoEl.value : 'todos';
+    const prioridade = prioEl ? prioEl.value : 'todos';
+
+    let filtrados = [...ticketsParaTabela];
+
+    if (status !== 'todos') filtrados = filtrados.filter(t => t.status === status);
+    if (tipo !== 'todos') filtrados = filtrados.filter(t => t.tipo === tipo);
+    if (prioridade !== 'todos') filtrados = filtrados.filter(t => t.prioridade === prioridade);
+    if (busca) {
+        filtrados = filtrados.filter(t =>
+            String(t.id).includes(busca) ||
+            (t.empresa && t.empresa.toLowerCase().includes(busca)) ||
+            (t.usuario && t.usuario.toLowerCase().includes(busca)) ||
+            (t.assunto && t.assunto.toLowerCase().includes(busca))
+        );
+    }
+
+    renderizarTabelaGeral(filtrados);
+
+    const contador = document.getElementById('contadorAtendimento');
+    if (contador) {
+        contador.textContent = `${filtrados.length} ${filtrados.length === 1 ? 'chamado' : 'chamados'}`;
+    }
+}
+
+/**
+ * RESUMO GERAL (KPIs)
+ */
+function renderizarKpis(tickets) {
+    const container = document.getElementById('kpiSummaryRow');
+    if (!container) return;
+
+    const contar = (status) => tickets.filter(t => t.status === status).length;
+
+    const kpis = [
+        { key: 'total',       icon: 'fa-ticket-alt',     label: 'Total de Chamados', value: tickets.length },
+        { key: 'pendente',    icon: 'fa-hourglass-half', label: 'Pendentes',         value: contar('Pendente') },
+        { key: 'atendimento', icon: 'fa-headset',        label: 'Em Atendimento',    value: contar('Em Atendimento') },
+        { key: 'vencido',     icon: 'fa-exclamation-triangle', label: 'Vencidos',    value: contar('Vencido') },
+        { key: 'finalizado',  icon: 'fa-check-circle',   label: 'Finalizados',       value: contar('Finalizado') },
+        { key: 'cancelado',   icon: 'fa-ban',            label: 'Cancelados',        value: contar('Cancelado') }
+    ];
+
+    container.innerHTML = kpis.map(kpi => `
+        <div class="kpi-card kpi-${kpi.key}">
+            <div class="kpi-icon"><i class="fas ${kpi.icon}"></i></div>
+            <div class="kpi-info">
+                <div class="kpi-value">${kpi.value}</div>
+                <div class="kpi-label">${kpi.label}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+/**
+ * RENDERIZAÇÃO DOS GRÁFICOS (com texto central, legenda detalhada e ordenação por volume)
  */
 // Objeto global para armazenar as instâncias e podermos destruí-las ao atualizar
 let instanciasGraficosEmpresas = {};
+
+// Desenha o total de chamados no centro de cada rosca
+const centerTextPlugin = {
+    id: 'centerText',
+    afterDraw(chart) {
+        const total = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+        const { ctx, chartArea: { left, right, top, bottom } } = chart;
+        const x = (left + right) / 2;
+        const y = (top + bottom) / 2;
+
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '700 24px Segoe UI, sans-serif';
+        ctx.fillStyle = '#0f172a';
+        ctx.fillText(total, x, y - 9);
+        ctx.font = '600 11px Segoe UI, sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(total === 1 ? 'chamado' : 'chamados', x, y + 12);
+        ctx.restore();
+    }
+};
 
 function renderizarGraficosPorEmpresa(tickets) {
     const container = document.getElementById('containerGraficosEmpresas');
@@ -251,22 +384,41 @@ function renderizarGraficosPorEmpresa(tickets) {
     Object.values(instanciasGraficosEmpresas).forEach(chart => chart.destroy());
     instanciasGraficosEmpresas = {};
 
-    // 2. Agrupar tickets por empresa
-    const empresas = [...new Set(tickets.map(t => t.empresa))];
+    // 2. Agrupar tickets por empresa e ordenar pela mais movimentada primeiro
+    const ticketsPorEmpresa = tickets.reduce((acc, t) => {
+        (acc[t.empresa] = acc[t.empresa] || []).push(t);
+        return acc;
+    }, {});
+    const empresas = Object.keys(ticketsPorEmpresa)
+        .sort((a, b) => ticketsPorEmpresa[b].length - ticketsPorEmpresa[a].length);
+
+    const statusColorMap = {
+        'Pendente': '#f59e0b',
+        'Vencido': '#dc2626',
+        'Em Atendimento': '#2563eb',
+        'Finalizado': '#10b981',
+        'Cancelado': '#94a3b8'
+    };
 
     empresas.forEach((nomeEmpresa, index) => {
-        const ticketsDaEmpresa = tickets.filter(t => t.empresa === nomeEmpresa);
+        const ticketsDaEmpresa = ticketsPorEmpresa[nomeEmpresa];
         const canvasId = `chart-${index}`;
 
         // 3. Criar o Card da Empresa no HTML
+        const nomeEmpresaEscapado = nomeEmpresa.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         const cardHtml = `
             <div class="chart-card-modern">
                 <div class="chart-header">
-                    <h3><i class="fas fa-building"></i> ${nomeEmpresa}</h3>
+                    <h3 class="chart-empresa-link" onclick="navegarParaAtendimentoFiltrado('${nomeEmpresaEscapado}', null, null)" title="Ver todos os chamados de ${nomeEmpresa}">
+                        <i class="fas fa-building"></i> ${nomeEmpresa}
+                        <i class="fas fa-external-link-alt chart-link-icon"></i>
+                    </h3>
+                    <span class="chart-total-badge">${ticketsDaEmpresa.length} ${ticketsDaEmpresa.length === 1 ? 'chamado' : 'chamados'}</span>
                 </div>
                 <div class="chart-body">
                     <canvas id="${canvasId}"></canvas>
                 </div>
+                <ul class="chart-legend-modern" id="legend-${canvasId}"></ul>
             </div>
         `;
         container.insertAdjacentHTML('beforeend', cardHtml);
@@ -275,13 +427,7 @@ function renderizarGraficosPorEmpresa(tickets) {
         let labels = [];
         let data = [];
         let colors = [];
-
-        const statusColorMap = {
-            'Pendente': '#f59e0b',
-            'Em Atendimento': '#2563eb',
-            'Finalizado': '#10b981',
-            'Cancelado': '#ef4444'
-        };
+        let accentColor = '#2563eb';
 
         if (modoVisao === 'tipo') {
             const tipoContagem = ticketsDaEmpresa.reduce((acc, item) => {
@@ -297,28 +443,23 @@ function renderizarGraficosPorEmpresa(tickets) {
             };
             const fallbackColors = ['#6366f1', '#14b8a6', '#fb7185', '#f59e0b', '#8b5cf6'];
 
-            labels = Object.entries(tipoContagem).map(([tipo, count]) => `${tipo} (${count})`);
+            labels = Object.keys(tipoContagem);
             data = Object.values(tipoContagem);
-            colors = Object.keys(tipoContagem).map((tipo, index) => tipoColorMap[tipo] || fallbackColors[index % fallbackColors.length]);
+            colors = labels.map((tipo, i) => tipoColorMap[tipo] || fallbackColors[i % fallbackColors.length]);
 
-            const topTipo = Object.entries(tipoContagem).reduce((prev, current) => current[1] > prev[1] ? current : prev, [Object.keys(tipoContagem)[0], 0])[0];
+            const topTipo = Object.entries(tipoContagem).reduce((prev, current) => current[1] > prev[1] ? current : prev, [labels[0], 0])[0];
             accentColor = tipoColorMap[topTipo] || fallbackColors[0];
         } else {
-            const pendente = ticketsDaEmpresa.filter(t => t.status === 'Pendente').length;
-            const atendimento = ticketsDaEmpresa.filter(t => t.status === 'Em Atendimento').length;
-            const finalizado = ticketsDaEmpresa.filter(t => t.status === 'Finalizado').length;
-            const cancelado = ticketsDaEmpresa.filter(t => t.status === 'Cancelado').length;
+            const statuses = ['Pendente', 'Vencido', 'Em Atendimento', 'Finalizado', 'Cancelado'];
+            const counts = statuses.map(s => ticketsDaEmpresa.filter(t => t.status === s).length);
 
-            const statuses = ['Pendente', 'Em Atendimento', 'Finalizado', 'Cancelado'];
-            const counts = [pendente, atendimento, finalizado, cancelado];
-
-            labels = statuses.map((s, i) => `${s} (${counts[i]})`).filter((l, i) => counts[i] > 0);
+            labels = statuses.filter((s, i) => counts[i] > 0);
             data = counts.filter(v => v > 0);
-            colors = statuses.filter((s, i) => counts[i] > 0).map(s => statusColorMap[s]);
+            colors = labels.map(s => statusColorMap[s]);
 
             // accent based on predominant status
             const maxIndex = counts.indexOf(Math.max(...counts));
-            var accentColor = statusColorMap[statuses[maxIndex]] || '#2563eb';
+            accentColor = statusColorMap[statuses[maxIndex]] || '#2563eb';
         }
 
         // 5. Inicializar o gráfico para esta empresa
@@ -327,22 +468,73 @@ function renderizarGraficosPorEmpresa(tickets) {
         const cardEl = document.getElementById(canvasId).closest('.chart-card-modern');
         if (cardEl) {
             cardEl.style.borderLeft = `6px solid ${accentColor}`;
-            const header = cardEl.querySelector('.chart-header');
+            const header = cardEl.querySelector('.chart-header h3');
             if (header) header.style.color = accentColor;
         }
+
+        const totalEmpresa = data.reduce((a, b) => a + b, 0);
+
         instanciasGraficosEmpresas[canvasId] = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: labels,
-                datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, cutout: '70%' }]
+                datasets: [{
+                    data: data,
+                    backgroundColor: colors,
+                    borderWidth: 2,
+                    borderColor: '#fff',
+                    hoverOffset: 6,
+                    spacing: 2,
+                    cutout: '72%'
+                }]
             },
+            plugins: [centerTextPlugin],
             options: {
-                plugins: {
-                    legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 10 } } }
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const modoAtual = document.getElementById('filtroModoVisao').value;
+                        navegarParaAtendimentoFiltrado(nomeEmpresa, labels[elements[0].index], modoAtual);
+                    }
                 },
-                maintainAspectRatio: false  
+                onHover: (event, elements) => {
+                    if (event.native) event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label(context) {
+                                const valor = context.parsed;
+                                const pct = totalEmpresa ? Math.round((valor / totalEmpresa) * 100) : 0;
+                                return ` ${context.label}: ${valor} (${pct}%) — clique para ver`;
+                            }
+                        }
+                    }
+                },
+                animation: { animateRotate: true, duration: 700 },
+                maintainAspectRatio: false
             }
         });
+
+        // 6. Legenda customizada com contagem e percentual (clicável)
+        const legendEl = document.getElementById(`legend-${canvasId}`);
+        if (legendEl) {
+            const modoAtual = document.getElementById('filtroModoVisao').value;
+            legendEl.innerHTML = labels.map((label, i) => {
+                const valor = data[i];
+                const pct = totalEmpresa ? Math.round((valor / totalEmpresa) * 100) : 0;
+                const empresaEscapada = nomeEmpresa.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const labelEscapada = label.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                return `
+                    <li class="legend-item-link" onclick="navegarParaAtendimentoFiltrado('${empresaEscapada}', '${labelEscapada}', '${modoAtual}')" title="Ver chamados ${label} de ${nomeEmpresa}">
+                        <span class="legend-dot" style="background:${colors[i]}"></span>
+                        <span class="legend-label">${label}</span>
+                        <span class="legend-value">${valor}<small>(${pct}%)</small></span>
+                        <i class="fas fa-arrow-right legend-arrow"></i>
+                    </li>
+                `;
+            }).join('');
+        }
     });
 }
 
@@ -411,14 +603,70 @@ async function carregarUsuarios() {
 
     try {
         const response = await fetch('http://localhost:3000/api/usuarios');
-        const usuarios = await response.json();
+        usuariosCadastrados = await response.json();
+        aplicarFiltroUsuarios();
+    } catch (error) {
+        console.error("Erro ao carregar usuários:", error);
+    }
+}
 
-        tbody.innerHTML = usuarios.map(user => `
+function aplicarFiltroUsuarios() {
+    const buscaEl = document.getElementById('buscaUsuario');
+    const perfilEl = document.getElementById('filtroPerfilUsuario');
+
+    const busca = buscaEl ? buscaEl.value.trim().toLowerCase() : '';
+    const perfil = perfilEl ? perfilEl.value : 'todos';
+
+    let filtrados = [...usuariosCadastrados];
+
+    if (perfil !== 'todos') filtrados = filtrados.filter(u => (u.perfil || '').toLowerCase() === perfil);
+    if (busca) {
+        filtrados = filtrados.filter(u =>
+            (u.nome && u.nome.toLowerCase().includes(busca)) ||
+            (u.email && u.email.toLowerCase().includes(busca)) ||
+            (u.empresa && u.empresa.toLowerCase().includes(busca))
+        );
+    }
+
+    renderizarTabelaUsuarios(filtrados);
+
+    const contador = document.getElementById('contadorUsuarios');
+    if (contador) {
+        contador.textContent = `${filtrados.length} ${filtrados.length === 1 ? 'usuário' : 'usuários'}`;
+    }
+}
+
+function renderizarTabelaUsuarios(usuarios) {
+    const tbody = document.getElementById('listaUsuarios');
+    if (!tbody) return;
+
+    if (usuarios.length === 0) {
+        tbody.innerHTML = `
+            <tr class="empty-row">
+                <td colspan="6">
+                    <div class="empty-state-table">
+                        <i class="fas fa-users"></i>
+                        <p>Nenhum usuário encontrado com os filtros selecionados.</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = usuarios.map(user => {
+        const perfilClasse = `profile-tag-${(user.perfil || '').toLowerCase()}`;
+        const inicial = user.nome ? user.nome.trim().charAt(0).toUpperCase() : '?';
+
+        return `
             <tr>
-                <td><strong>${user.nome}</strong></td>
+                <td class="col-usuario">
+                    <span class="user-avatar">${inicial}</span>
+                    <strong>${user.nome}</strong>
+                </td>
                 <td>${user.email}</td>
                 <td>${user.empresa || '---'}</td>
-                <td><span class="profile-tag">${user.perfil}</span></td>
+                <td><span class="profile-tag ${perfilClasse}">${user.perfil}</span></td>
                 <td><span class="badge finalizado">Ativo</span></td>
                 <td>
                     <button class="btn-action-soft" onclick="deletarUsuario('${user.email}')" title="Remover Usuário">
@@ -426,10 +674,8 @@ async function carregarUsuarios() {
                     </button>
                 </td>
             </tr>
-        `).join('');
-    } catch (error) {
-        console.error("Erro ao carregar usuários:", error);
-    }
+        `;
+    }).join('');
 }
 
 function abrirModalUsuario() {
@@ -567,29 +813,79 @@ async function carregarEmpresas() {
 
     try {
         const response = await fetch('http://localhost:3000/api/empresas');
-        const empresas = await response.json();
+        empresasCadastradas = await response.json();
+        aplicarFiltroEmpresas();
+    } catch (error) {
+        console.error('Erro ao carregar empresas:', error);
+    }
+}
 
-        tbody.innerHTML = empresas.map(emp => {
-            const tipoLabel = emp.tipo === 'E' ? 'Colaborador' : (emp.tipo === 'C' ? 'Cliente' : emp.tipo);
-            return `
+function aplicarFiltroEmpresas() {
+    const buscaEl = document.getElementById('buscaEmpresa');
+    const tipoEl = document.getElementById('filtroTipoEmpresa');
+
+    const busca = buscaEl ? buscaEl.value.trim().toLowerCase() : '';
+    const tipo = tipoEl ? tipoEl.value : 'todos';
+
+    let filtradas = [...empresasCadastradas];
+
+    if (tipo !== 'todos') filtradas = filtradas.filter(emp => emp.tipo === tipo);
+    if (busca) {
+        filtradas = filtradas.filter(emp =>
+            (emp.nome && emp.nome.toLowerCase().includes(busca)) ||
+            (emp.cnpj && emp.cnpj.toLowerCase().includes(busca)) ||
+            (emp.cidade && emp.cidade.toLowerCase().includes(busca))
+        );
+    }
+
+    renderizarTabelaEmpresas(filtradas);
+
+    const contador = document.getElementById('contadorEmpresas');
+    if (contador) {
+        contador.textContent = `${filtradas.length} ${filtradas.length === 1 ? 'empresa' : 'empresas'}`;
+    }
+}
+
+function renderizarTabelaEmpresas(empresas) {
+    const tbody = document.getElementById('listaEmpresas');
+    if (!tbody) return;
+
+    if (empresas.length === 0) {
+        tbody.innerHTML = `
+            <tr class="empty-row">
+                <td colspan="6">
+                    <div class="empty-state-table">
+                        <i class="fas fa-building"></i>
+                        <p>Nenhuma empresa encontrada com os filtros selecionados.</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = empresas.map(emp => {
+        const isColaborador = emp.tipo === 'E';
+        const tipoLabel = isColaborador ? 'Colaborador' : (emp.tipo === 'C' ? 'Cliente' : emp.tipo);
+        const tipoClasse = isColaborador ? 'profile-tag-colaborador' : 'profile-tag-cliente';
+        return `
             <tr>
-                <td>#${emp.id}</td>
-                <td>${emp.nome}</td>
+                <td class="col-id">#${emp.id}</td>
+                <td><strong>${emp.nome}</strong></td>
                 <td>${emp.cnpj}</td>
-                <td>${emp.cidade}</td>
-                <td>${emp.endereco}</td>
-                <td>${emp.cep}</td>
-                <td><span class="profile-tag">${tipoLabel}</span></td>
+                <td class="col-cliente">
+                    <strong>${emp.cidade}</strong>
+                    <span>${emp.endereco} · ${emp.cep}</span>
+                </td>
+                <td><span class="profile-tag ${tipoClasse}">${tipoLabel}</span></td>
                 <td>
                     <button class="btn-action-soft" onclick="deletarEmpresa(${emp.id})" title="Remover Empresa">
                         <i class="far fa-trash-alt"></i>
                     </button>
                 </td>
             </tr>
-        `}).join('');
-    } catch (error) {
-        console.error('Erro ao carregar empresas:', error);
-    }
+        `;
+    }).join('');
 }
 
 async function salvarEmpresa(event) {
@@ -654,18 +950,43 @@ async function carregarTiposTicket() {
         const response = await fetch('http://localhost:3000/api/tipos-ticket');
         const tipos = await response.json();
 
-        tbody.innerHTML = tipos.map(tipo => `
+        const contador = document.getElementById('contadorTipos');
+        if (contador) {
+            contador.textContent = `${tipos.length} ${tipos.length === 1 ? 'tipo' : 'tipos'}`;
+        }
+
+        if (tipos.length === 0) {
+            tbody.innerHTML = `
+                <tr class="empty-row">
+                    <td colspan="4">
+                        <div class="empty-state-table">
+                            <i class="fas fa-tags"></i>
+                            <p>Nenhum tipo de chamado cadastrado ainda.</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = tipos.map(tipo => {
+            const tipoClass = `type-${tipo.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '')}`;
+            const prazoNum = parseInt(tipo.prazo_dias, 10) || 0;
+            const slaClasse = prazoNum <= 2 ? 'sla-urgente' : (prazoNum <= 7 ? 'sla-atencao' : 'sla-tranquilo');
+
+            return `
             <tr>
-                <td>#${tipo.id}</td>
-                <td>${tipo.nome}</td>
-                <td>${tipo.prazo_dias}</td>
+                <td class="col-id">#${tipo.id}</td>
+                <td><span class="type-badge ${tipoClass}">${tipo.nome}</span></td>
+                <td><span class="sla-pill ${slaClasse}"><i class="fas fa-clock"></i> ${tipo.prazo_dias} ${prazoNum === 1 ? 'dia' : 'dias'}</span></td>
                 <td>
                     <button class="btn-action-soft" onclick="deletarTipo(${tipo.id})" title="Remover Tipo">
                         <i class="far fa-trash-alt"></i>
                     </button>
                 </td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
     } catch (error) {
         console.error('Erro ao carregar tipos:', error);
     }
@@ -771,12 +1092,50 @@ async function abrirRespostaAdmin(id, modo = 'historico') {
         const chatContainer = document.getElementById('historicoChatAdmin');
         if (!chatContainer) return;
 
-        chatContainer.innerHTML = mensagens.map(msg => `
-            <div class="interaction-card ${msg.email_autor === usuarioAtivo.email ? 'msg-me' : 'msg-other'}">
-                <div class="msg-header"><strong>${msg.autor_display}</strong></div>
-                ${msg.texto ? `<p>${msg.texto}</p>` : ''}
-                ${msg.anexo && msg.anexo.length > 50 ? `<div class="attachment-link"><a href="${msg.anexo}" download="anexo-${msg.id}">📎 Baixar Anexo</a></div>` : ''}
-            </div>`).join('');
+        const mensagensChat = mensagens.filter(m => m.tipo_msg !== 'D');
+        let lastDate = null;
+        chatContainer.innerHTML = mensagensChat.length === 0
+            ? `<div class="chat-empty-state">
+                   <i class="fas fa-comments"></i>
+                   <p>Nenhuma mensagem ainda.</p>
+               </div>`
+            : mensagensChat.map(msg => {
+                const isMe = msg.email_autor === usuarioAtivo.email;
+                const inicial = (msg.autor_display || '?').charAt(0).toUpperCase();
+                const hora = new Date(msg.data).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+                const dataMensagem = new Date(msg.data).toLocaleDateString('pt-BR', {day: '2-digit', month: 'long', year: 'numeric'});
+
+                let dateSep = '';
+                if (dataMensagem !== lastDate) {
+                    lastDate = dataMensagem;
+                    dateSep = `<div class="chat-date-sep">${dataMensagem}</div>`;
+                }
+
+                const tipoRole = msg.tipo_autor || 'Cliente';
+                const roleClass = tipoRole === 'Admin' ? 'role-admin' : tipoRole === 'Colaborador' ? 'role-colab' : 'role-client';
+
+                return `
+                    ${dateSep}
+                    <div class="msg-row ${isMe ? 'msg-row-me' : 'msg-row-other'} msg-role-${roleClass}">
+                        <div class="msg-avatar-bubble msg-avatar-${roleClass}">${inicial}</div>
+                        <div class="msg-content">
+                            <div class="msg-meta">
+                                <span class="msg-author">${msg.autor_display}</span>
+                                <span class="msg-role-badge ${roleClass}">${tipoRole}</span>
+                                <span class="msg-time">${hora}</span>
+                            </div>
+                            <div class="msg-bubble msg-bubble-${roleClass}">
+                                ${msg.texto ? `<p class="msg-text">${msg.texto}</p>` : ''}
+                                ${msg.anexo && msg.anexo.length > 50 ? `
+                                    <a class="msg-attachment-pill" href="${msg.anexo}" download="anexo-${msg.id}">
+                                        <i class="fas fa-paperclip"></i> Baixar Anexo
+                                    </a>` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+
+        requestAnimationFrame(() => { chatContainer.scrollTop = chatContainer.scrollHeight; });
 
         const ticketResponderEl = document.getElementById('idTicketResponder');
         if (ticketResponderEl) {
@@ -890,12 +1249,16 @@ function fecharAreaResposta() {
  */
 function atualizarElementosInterface(dados) {
     console.log("GESISTEC: Atualizando interface com", dados.length, "tickets.");
-    
-    // 1. Gera os gráficos dinâmicos por empresa
+
+    // 1. Atualiza o resumo geral (KPIs)
+    renderizarKpis(dados);
+
+    // 2. Gera os gráficos dinâmicos por empresa
     renderizarGraficosPorEmpresa(dados);
-    
-    // 2. Preenche a tabela de chamados
-    renderizarTabelaGeral(dados);
+
+    // 3. Preenche a tabela de chamados (respeitando os filtros da seção de Atendimento)
+    ticketsParaTabela = dados;
+    aplicarFiltroAtendimento();
 }
 
 /**
