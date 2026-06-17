@@ -114,15 +114,19 @@ app.post('/api/tickets', (req, res) => {
 
         if (descricao && descricao.trim()) {
             tarefas.push(cb => {
-                const sql = `INSERT INTO atende (DAT_ATENDE, DES_ATENDE, FLG_ESTADO, DOC_ANEXO, NRO_TICKET, DES_LOGIN) VALUES (NOW(), ?, 'D', NULL, ?, ?)`;
+                const sql = `INSERT INTO atende (DAT_ATENDE, DES_ATENDE, FLG_ESTADO, NRO_TICKET, DES_LOGIN) VALUES (NOW(), ?, 'D', ?, ?)`;
                 db.query(sql, [descricao.trim(), ticketId, login], cb);
             });
         }
 
         if (anexo) {
             tarefas.push(cb => {
-                const sql = `INSERT INTO atende (DAT_ATENDE, DES_ATENDE, FLG_ESTADO, DOC_ANEXO, NRO_TICKET, DES_LOGIN) VALUES (NOW(), ?, 'A', ?, ?, ?)`;
-                db.query(sql, ['Anexo enviado no primeiro contato', anexo, ticketId, login], cb);
+                const sqlAtende = `INSERT INTO atende (DAT_ATENDE, DES_ATENDE, FLG_ESTADO, NRO_TICKET, DES_LOGIN) VALUES (NOW(), ?, 'A', ?, ?)`;
+                db.query(sqlAtende, ['Anexo enviado no primeiro contato', ticketId, login], (err, atResult) => {
+                    if (err) return cb(err);
+                    const sqlDoc = `INSERT INTO atende_doc (NRO_ATENDE, DOC_ANEXO) VALUES (?, ?)`;
+                    db.query(sqlDoc, [atResult.insertId, anexo], cb);
+                });
             });
         }
 
@@ -145,23 +149,31 @@ app.post('/api/tickets', (req, res) => {
 app.delete('/api/tickets/:id', (req, res) => {
     const ticketId = req.params.id;
 
-    db.query('DELETE FROM atende WHERE NRO_TICKET = ?', [ticketId], (err) => {
-        if (err) {
-            console.error('Erro ao excluir atendimentos do ticket:', err.message);
-            return res.status(500).json({ error: err.message });
+    const sqlDelDocs = `DELETE ad FROM atende_doc ad INNER JOIN atende a ON ad.NRO_ATENDE = a.NRO_ATENDE WHERE a.NRO_TICKET = ?`;
+    db.query(sqlDelDocs, [ticketId], (errDoc) => {
+        if (errDoc) {
+            console.error('Erro ao excluir anexos do ticket:', errDoc.message);
+            return res.status(500).json({ error: errDoc.message });
         }
 
-        db.query('DELETE FROM ticket WHERE NRO_TICKET = ?', [ticketId], (ticketErr, result) => {
-            if (ticketErr) {
-                console.error('Erro ao excluir ticket:', ticketErr.message);
-                return res.status(500).json({ error: ticketErr.message });
+        db.query('DELETE FROM atende WHERE NRO_TICKET = ?', [ticketId], (err) => {
+            if (err) {
+                console.error('Erro ao excluir atendimentos do ticket:', err.message);
+                return res.status(500).json({ error: err.message });
             }
 
-            if (result.affectedRows === 0) {
-                return res.status(404).json({ error: 'Ticket não encontrado.' });
-            }
+            db.query('DELETE FROM ticket WHERE NRO_TICKET = ?', [ticketId], (ticketErr, result) => {
+                if (ticketErr) {
+                    console.error('Erro ao excluir ticket:', ticketErr.message);
+                    return res.status(500).json({ error: ticketErr.message });
+                }
 
-            res.json({ message: 'Ticket excluído com sucesso.' });
+                if (result.affectedRows === 0) {
+                    return res.status(404).json({ error: 'Ticket não encontrado.' });
+                }
+
+                res.json({ message: 'Ticket excluído com sucesso.' });
+            });
         });
     });
 });
@@ -169,18 +181,17 @@ app.delete('/api/tickets/:id', (req, res) => {
 // 3. MENSAGENS / CHAT
 // ==========================================
 
-// BUSCAR MENSAGENS DE UM TICKET (Com JOIN para pegar o Nome do Autor)
+// BUSCAR MENSAGENS DE UM TICKET
 app.get('/api/mensagens/:ticketId', (req, res) => {
     const { ticketId } = req.params;
-    
-    const sql = `
+
+    const sqlMsgs = `
         SELECT
             a.DES_LOGIN as email_autor,
             c.DES_NOME as nome_autor,
             c.FLG_TIP_COL as tipo_autor,
             a.DAT_ATENDE as data,
             a.DES_ATENDE as texto,
-            a.DOC_ANEXO as anexo,
             a.NRO_ATENDE as id,
             a.FLG_ESTADO as tipo_msg
         FROM atende a
@@ -188,36 +199,65 @@ app.get('/api/mensagens/:ticketId', (req, res) => {
         WHERE a.NRO_TICKET = ?
         ORDER BY a.NRO_ATENDE ASC`;
 
-    db.query(sql, [ticketId], (err, results) => {
+    db.query(sqlMsgs, [ticketId], (err, msgs) => {
         if (err) return res.status(500).json({ error: err.message });
 
-        const tipoLabel = { 'A': 'Admin', 'E': 'Colaborador', 'C': 'Cliente' };
-        const mensagensFormatadas = results.map(row => ({
-            id: row.id,
-            data: row.data,
-            texto: row.texto,
-            email_autor: row.email_autor,
-            autor_display: row.nome_autor || row.email_autor,
-            tipo_autor: tipoLabel[row.tipo_autor] || 'Cliente',
-            anexo: row.anexo ? row.anexo.toString('utf-8') : null,
-            tipo_msg: row.tipo_msg
-        }));
+        const sqlAnexos = `
+            SELECT ad.NRO_ATENDE, ad.DOC_ANEXO
+            FROM atende_doc ad
+            INNER JOIN atende a ON ad.NRO_ATENDE = a.NRO_ATENDE
+            WHERE a.NRO_TICKET = ?
+            ORDER BY ad.NRO_ATENDE_DOC ASC`;
 
-        res.json(mensagensFormatadas);
+        db.query(sqlAnexos, [ticketId], (errAnexos, anexosRows) => {
+            if (errAnexos) return res.status(500).json({ error: errAnexos.message });
+
+            const anexosPorMsg = {};
+            anexosRows.forEach(row => {
+                if (!anexosPorMsg[row.NRO_ATENDE]) anexosPorMsg[row.NRO_ATENDE] = [];
+                if (!row.DOC_ANEXO) return;
+                const raw = row.DOC_ANEXO.toString('utf-8');
+                let parsed;
+                try { parsed = JSON.parse(raw); } catch { parsed = { inline: false, data: raw }; }
+                anexosPorMsg[row.NRO_ATENDE].push(parsed);
+            });
+
+            const tipoLabel = { 'A': 'Admin', 'E': 'Colaborador', 'C': 'Cliente' };
+            const mensagensFormatadas = msgs.map(row => ({
+                id: row.id,
+                data: row.data,
+                texto: row.texto,
+                email_autor: row.email_autor,
+                autor_display: row.nome_autor || row.email_autor,
+                tipo_autor: tipoLabel[row.tipo_autor] || 'Cliente',
+                anexos: anexosPorMsg[row.id] || [],
+                tipo_msg: row.tipo_msg
+            }));
+
+            res.json(mensagensFormatadas);
+        });
     });
 });
 
 // ENVIAR MENSAGEM NO CHAT
 app.post('/api/mensagens', (req, res) => {
-    const { ticket_id, autor, texto, anexo_conteudo } = req.body;
+    const { ticket_id, autor, texto, anexos } = req.body;
 
-    const sql = `
-        INSERT INTO atende (DAT_ATENDE, DES_ATENDE, FLG_ESTADO, DOC_ANEXO, NRO_TICKET, DES_LOGIN) 
-        VALUES (NOW(), ?, 'A', ?, ?, ?)`;
+    const sqlAtende = `INSERT INTO atende (DAT_ATENDE, DES_ATENDE, FLG_ESTADO, NRO_TICKET, DES_LOGIN) VALUES (NOW(), ?, 'A', ?, ?)`;
 
-    db.query(sql, [texto, anexo_conteudo, ticket_id, autor], (err, result) => {
+    db.query(sqlAtende, [texto, ticket_id, autor], (err, result) => {
         if (err) return res.status(500).json({ error: "Erro ao salvar mensagem" });
-        res.json({ message: "Mensagem enviada com sucesso!", id: result.insertId });
+
+        const lista = (Array.isArray(anexos) ? anexos : []).filter(Boolean).slice(0, 2);
+        if (lista.length === 0) {
+            return res.json({ message: "Mensagem enviada com sucesso!", id: result.insertId });
+        }
+
+        const values = lista.map(a => [result.insertId, JSON.stringify(a)]);
+        db.query('INSERT INTO atende_doc (NRO_ATENDE, DOC_ANEXO) VALUES ?', [values], (errDoc) => {
+            if (errDoc) return res.status(500).json({ error: "Erro ao salvar anexos" });
+            res.json({ message: "Mensagem enviada com sucesso!", id: result.insertId });
+        });
     });
 });
 
