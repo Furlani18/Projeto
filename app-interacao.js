@@ -114,33 +114,51 @@ function renderizarConversas() {
         return;
     }
 
-    box.innerHTML = mensagens.map(msg => `
+    const renderMsg = msg => `
         <div class="msg-bubble ${msg.perfil === 'suporte' ? 'admin' : 'user'}">
-
             <div class="msg-header">
                 <strong>${msg.autor}</strong>
                 <span>${new Date(msg.data).toLocaleString()}</span>
             </div>
-
             ${msg.texto ? `<p class="msg-texto">${msg.texto}</p>` : ""}
-
             ${msg.anexo ? `
                 <div class="msg-anexo" onclick="baixarAnexo('${msg.anexo.conteudo}', '${msg.anexo.nome}')">
-                    
-                    <div class="anexo-icone">
-                        <i class="fas fa-paperclip"></i>
-                    </div>
-
+                    <div class="anexo-icone"><i class="fas fa-paperclip"></i></div>
                     <div class="anexo-info">
                         <div class="anexo-nome">${msg.anexo.nome}</div>
                         <div class="anexo-tamanho">${msg.anexo.tamanho}</div>
                     </div>
-
                 </div>
             ` : ""}
+        </div>`;
 
-        </div>
-    `).join('');
+    if (mensagens.length <= 3) {
+        box.innerHTML = mensagens.map(renderMsg).join('');
+        return;
+    }
+
+    const count = mensagens.length - 2;
+    box.innerHTML = renderMsg(mensagens[0]) +
+        `<div class="chat-collapse-wrap">
+            <button class="btn-chat-collapse" data-count="${count}" onclick="toggleMensagensOcultas(this)">
+                <i class="fas fa-chevron-down"></i> Ver ${count} mensagem${count > 1 ? 's' : ''} oculta${count > 1 ? 's' : ''}
+            </button>
+            <div class="chat-msgs-ocultas" style="display:none;">
+                ${mensagens.slice(1, -1).map(renderMsg).join('')}
+            </div>
+        </div>` +
+        renderMsg(mensagens[mensagens.length - 1]);
+}
+
+function toggleMensagensOcultas(btn) {
+    const wrap = btn.closest('.chat-collapse-wrap');
+    const ocultas = wrap.querySelector('.chat-msgs-ocultas');
+    const isOpen = ocultas.style.display !== 'none';
+    const count = btn.dataset.count;
+    ocultas.style.display = isOpen ? 'none' : 'block';
+    btn.innerHTML = isOpen
+        ? `<i class="fas fa-chevron-down"></i> Ver ${count} mensagem${count > 1 ? 's' : ''} oculta${count > 1 ? 's' : ''}`
+        : `<i class="fas fa-chevron-up"></i> Ocultar mensagens`;
 }
 
 function salvarNoStorage() {
