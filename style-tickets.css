@@ -1277,6 +1277,27 @@ td {
 .chat-empty-state i  { font-size: 2.2rem; color: rgba(26, 92, 55, 0.28); }
 .chat-empty-state p  { margin: 0; font-size: 0.88rem; font-weight: 600; line-height: 1.5; }
 
+/* ── Colapso de mensagens ── */
+.chat-collapse-wrap { margin: 6px 0; }
+.btn-chat-collapse {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 7px 14px;
+    background: #f1f5f9;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    color: #64748b;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+.btn-chat-collapse:hover { background: #e2e8f0; color: #475569; }
+.chat-msgs-ocultas { margin-top: 4px; }
+
 .reply-container {
     background: #f8fbfc;
     border: 1px solid rgba(148, 163, 184, 0.22);
