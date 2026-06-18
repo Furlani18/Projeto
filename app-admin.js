@@ -1064,49 +1064,73 @@ async function abrirRespostaAdmin(id, modo = 'historico') {
         if (!chatContainer) return;
 
         const mensagensChat = mensagens.filter(m => m.tipo_msg !== 'D');
-        let lastDate = null;
-        chatContainer.innerHTML = mensagensChat.length === 0
-            ? `<div class="chat-empty-state">
+
+        const buildMsgRowAdmin = (msg) => {
+            const isMe = msg.email_autor === usuarioAtivo.email;
+            const inicial = (msg.autor_display || '?').charAt(0).toUpperCase();
+            const hora = new Date(msg.data).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+            const tipoRole = msg.tipo_autor || 'Cliente';
+            const roleClass = tipoRole === 'Admin' ? 'role-admin' : tipoRole === 'Colaborador' ? 'role-colab' : 'role-client';
+            return `
+                <div class="msg-row msg-role-${roleClass}${isMe ? ' msg-is-me' : ''}">
+                    <div class="msg-header">
+                        <div class="msg-avatar-bubble msg-avatar-${roleClass}">${inicial}</div>
+                        <span class="msg-author">${msg.autor_display}</span>
+                        <span class="msg-role-badge ${roleClass}">${tipoRole}</span>
+                        <span class="msg-time">${hora}</span>
+                    </div>
+                    <div class="msg-body">
+                        <div class="msg-bubble msg-bubble-${roleClass}">
+                            ${msg.texto ? `<p class="msg-text">${msg.texto}</p>` : ''}
+                            ${(msg.anexos || []).map((a, i) => {
+                                const src = a.data || a;
+                                return a.inline
+                                    ? `<img src="${src}" class="msg-img-inline" onclick="abrirImagem(this.src)" title="Clique para ampliar">`
+                                    : `<a class="msg-attachment-pill" href="${src}" download="anexo-${msg.id}-${i+1}"><i class="fas fa-paperclip"></i> Baixar Anexo</a>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>`;
+        };
+
+        const buildDateSepAdmin = (msg) => {
+            const dataMensagem = new Date(msg.data).toLocaleDateString('pt-BR', {day: '2-digit', month: 'long', year: 'numeric'});
+            return `<div class="chat-date-sep">${dataMensagem}</div>`;
+        };
+
+        if (mensagensChat.length === 0) {
+            chatContainer.innerHTML = `<div class="chat-empty-state">
                    <i class="fas fa-comments"></i>
                    <p>Nenhuma mensagem ainda.</p>
-               </div>`
-            : mensagensChat.map(msg => {
-                const isMe = msg.email_autor === usuarioAtivo.email;
-                const inicial = (msg.autor_display || '?').charAt(0).toUpperCase();
-                const hora = new Date(msg.data).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+               </div>`;
+        } else if (mensagensChat.length <= 3) {
+            let lastDate = null;
+            chatContainer.innerHTML = mensagensChat.map(msg => {
                 const dataMensagem = new Date(msg.data).toLocaleDateString('pt-BR', {day: '2-digit', month: 'long', year: 'numeric'});
-
-                let dateSep = '';
-                if (dataMensagem !== lastDate) {
-                    lastDate = dataMensagem;
-                    dateSep = `<div class="chat-date-sep">${dataMensagem}</div>`;
-                }
-
-                const tipoRole = msg.tipo_autor || 'Cliente';
-                const roleClass = tipoRole === 'Admin' ? 'role-admin' : tipoRole === 'Colaborador' ? 'role-colab' : 'role-client';
-
-                return `
-                    ${dateSep}
-                    <div class="msg-row msg-role-${roleClass}${isMe ? ' msg-is-me' : ''}">
-                        <div class="msg-header">
-                            <div class="msg-avatar-bubble msg-avatar-${roleClass}">${inicial}</div>
-                            <span class="msg-author">${msg.autor_display}</span>
-                            <span class="msg-role-badge ${roleClass}">${tipoRole}</span>
-                            <span class="msg-time">${hora}</span>
-                        </div>
-                        <div class="msg-body">
-                            <div class="msg-bubble msg-bubble-${roleClass}">
-                                ${msg.texto ? `<p class="msg-text">${msg.texto}</p>` : ''}
-                                ${(msg.anexos || []).map((a, i) => {
-                                    const src = a.data || a;
-                                    return a.inline
-                                        ? `<img src="${src}" class="msg-img-inline" onclick="abrirImagem(this.src)" title="Clique para ampliar">`
-                                        : `<a class="msg-attachment-pill" href="${src}" download="anexo-${msg.id}-${i+1}"><i class="fas fa-paperclip"></i> Baixar Anexo</a>`;
-                                }).join('')}
-                            </div>
-                        </div>
-                    </div>`;
+                const sep = dataMensagem !== lastDate ? (lastDate = dataMensagem, buildDateSepAdmin(msg)) : '';
+                return sep + buildMsgRowAdmin(msg);
             }).join('');
+        } else {
+            const primeira = mensagensChat[0];
+            const ultima = mensagensChat[mensagensChat.length - 1];
+            const intermediarias = mensagensChat.slice(1, -1);
+            const count = intermediarias.length;
+            let lastDateMid = new Date(primeira.data).toLocaleDateString('pt-BR', {day: '2-digit', month: 'long', year: 'numeric'});
+            const hiddenHtml = intermediarias.map(msg => {
+                const dataMensagem = new Date(msg.data).toLocaleDateString('pt-BR', {day: '2-digit', month: 'long', year: 'numeric'});
+                const sep = dataMensagem !== lastDateMid ? (lastDateMid = dataMensagem, buildDateSepAdmin(msg)) : '';
+                return sep + buildMsgRowAdmin(msg);
+            }).join('');
+            chatContainer.innerHTML =
+                buildDateSepAdmin(primeira) + buildMsgRowAdmin(primeira) +
+                `<div class="chat-collapse-wrap">
+                    <button class="btn-chat-collapse" data-count="${count}" onclick="toggleMensagensOcultas(this)">
+                        <i class="fas fa-chevron-down"></i> Ver ${count} mensagem${count > 1 ? 's' : ''} oculta${count > 1 ? 's' : ''}
+                    </button>
+                    <div class="chat-msgs-ocultas" style="display:none;">${hiddenHtml}</div>
+                </div>` +
+                buildMsgRowAdmin(ultima);
+        }
 
         requestAnimationFrame(() => { chatContainer.scrollTop = chatContainer.scrollHeight; });
 
@@ -1462,6 +1486,17 @@ function inicializarColaPrintAdmin() {
             }
         }
     });
+}
+
+function toggleMensagensOcultas(btn) {
+    const wrap = btn.closest('.chat-collapse-wrap');
+    const ocultas = wrap.querySelector('.chat-msgs-ocultas');
+    const isOpen = ocultas.style.display !== 'none';
+    const count = btn.dataset.count;
+    ocultas.style.display = isOpen ? 'none' : 'block';
+    btn.innerHTML = isOpen
+        ? `<i class="fas fa-chevron-down"></i> Ver ${count} mensagem${count > 1 ? 's' : ''} oculta${count > 1 ? 's' : ''}`
+        : `<i class="fas fa-chevron-up"></i> Ocultar mensagens`;
 }
 
 // Inicia o processo
